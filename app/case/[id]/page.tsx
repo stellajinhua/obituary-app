@@ -164,14 +164,16 @@ const religion = (form.religion || "").toLowerCase().trim();
             </select>
           ) : (
            <span className="text-gray-900">
-  {formatField("gender", form.gender)}
-</span>
+             {formatField("gender", form.gender)}
+          </span>
           )}
         </div>
 
         {/* DIALECT */}
         <div>
-          <strong>Dialect 籍贯:</strong>{" "}
+          <span className="font-semibold text-gray-800">
+            Dialect 籍贯:
+          </span>{" "}
           {isEditing ? (
             <select
               value={form.dialect || ""}
@@ -195,7 +197,9 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* FOOD */}
         <div>
-          <strong>Food 餐食:</strong>{" "}
+          <span className="font-semibold text-gray-800">
+            Food 餐食:
+          </span>{" "}
           {isEditing ? (
             <select
               value={form.food || ""}
@@ -214,7 +218,9 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* RELIGION */}
         <div>
-          <strong>Religion 宗教:</strong>{" "}
+          <span className="font-semibold text-gray-800">
+            Religion 宗教:
+          </span>{" "}
           {isEditing ? (
             <select
               value={form.religion || ""}
@@ -232,7 +238,8 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* SERVICE */}
         <div>
-          <strong>Service 类型:</strong>{" "}
+          <span className="font-semibold text-gray-800">
+            Service 类型: </span>{" "}
           {isEditing ? (
             <select
               value={form.burialtype || ""}
