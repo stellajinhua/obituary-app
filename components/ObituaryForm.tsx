@@ -672,7 +672,8 @@ setTimeout(() => {
           name="memorial_service_date"
           value={form.memorial_service_date || ""}
           onChange={handleChange}
-          className="border rounded-lg px-3 py-2 w-full"
+          className={dateClass}
+           style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
         />
       </div>
 
@@ -683,7 +684,8 @@ setTimeout(() => {
           name="memorial_service_time"
           value={form.memorial_service_time || ""}
           onChange={handleChange}
-          className="border rounded-lg px-3 py-2 w-full"
+          className={dateClass}
+          style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
         />
       </div>
 
@@ -702,7 +704,8 @@ setTimeout(() => {
     ? form.death_datetime.slice(0, 10)
     : ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
+    className={dateClass}
+   style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
   />
 
   <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
@@ -722,7 +725,8 @@ setTimeout(() => {
   form?.funeral_datetime
     ? form.funeral_datetime.slice(0, 16)
     : ""
-} onChange={handleChange} className="border rounded-lg px-3 py-2 w-full box-border appearance-none" />
+} onChange={handleChange} className={dateClass}
+   style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }} />
           <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
             {form.funeral_lunar_date}
           </div>
@@ -739,7 +743,8 @@ setTimeout(() => {
     name="encoffin_date"
     value={form.encoffin_date || ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
+    className={dateClass}
+   style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
   />
 
 <div className="flex flex-col md:flex-row gap-3 w-full">
@@ -769,7 +774,8 @@ setTimeout(() => {
     name="family_date"
     value={form.family_date || ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
+    className={dateClass}
+   style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
   />
 
   <input
@@ -777,7 +783,8 @@ setTimeout(() => {
     name="family_time"
     value={form.family_time || ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
+    className={dateClass}
+   style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
   />
 
   <div className="flex flex-col gap-3">
@@ -1104,6 +1111,10 @@ function Section({ title, children }: any) {
 // =========================
 // ✅ 1. FIX INPUT COMPONENT
 // =========================
+
+const dateClass =
+  "border rounded-lg px-3 py-2 w-full box-border";
+
 function Input({ value, onChange, ...rest }: any) {
   return (
     <input
