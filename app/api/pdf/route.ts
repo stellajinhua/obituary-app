@@ -1,3 +1,6 @@
+export async function GET() {
+  return new Response("ok");
+}
 
 export async function POST(req: Request) {
   try {
@@ -12,4 +15,3 @@ export async function POST(req: Request) {
     });
   }
 }
-
