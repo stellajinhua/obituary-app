@@ -207,7 +207,7 @@ useEffect(() => {
 }, [form?.religion]);
 
 const [previewUrl, setPreviewUrl] = useState("");
-const [previewData, setPreviewData] = useState(null);
+const [previewData, setPreviewData] = useState<any>(null);
 const previewRef = useRef<HTMLDivElement | null>(null);
 
 
@@ -367,7 +367,7 @@ if (name === "death_datetime" && value) {
   Object.keys(auto).forEach((key) => {
     // only fill if empty
 if (updated[key] == null || updated[key] === "") {
-  updated[key] = auto[key];
+  (updated as any)[key] = (auto as any)[key];
 }
   });
 }

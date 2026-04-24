@@ -82,7 +82,7 @@ export default function CasePage() {
 
   const formatField = (category: any, value: string) => {
     if (!value) return "-";
-    const item = map[category][value];
+    const item = (map as any)[category]?.[value];
     if (!item) return value;
     return `${item.en} ${item.cn}`;
   };
@@ -114,17 +114,17 @@ Gender: ${form.gender}
 Religion: ${form.religion}
 Dialect: ${form.dialect}
 Food: ${form.food}
-Service Type: ${map.service[form.burialtype]?.en || "-"}
+Service Type: ${(map as any).service?.[form.burialtype]?.en || "-"}
 
 ——————————
 
 案件编号：${form.case_id}
 
-性别：${map.gender[form.gender]?.cn || ""}
-宗教：${map.religion[form.religion]?.cn || ""}
-籍贯：${map.dialect[form.dialect]?.cn || ""}
-餐食：${map.food[form.food]?.cn || ""}
-服务类型：${map.service[form.burialtype]?.cn || ""}
+性别：${(map as any).gender?.[form.gender]?.cn || ""}
+宗教：${(map as any).religion?.[form.religion]?.cn || ""}
+籍贯：${(map as any).dialect?.[form.dialect]?.cn || ""}
+餐食：${(map as any).food?.[form.food]?.cn || ""}
+服务类型：${(map as any).service?.[form.burialtype]?.cn || ""}
 `;
   }
 

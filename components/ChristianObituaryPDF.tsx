@@ -4,6 +4,8 @@
 //import christianBg from "@/public/bg-christian.png";
 //import floralBg from "@/public/bg-buddhist.png";
 
+import solarlunar from "solarlunar";
+
 import {
   Page,
   Text,
@@ -25,7 +27,7 @@ Font.register({
 function formatDateCNEN(date?: string) {
   if (!date) return "-";
 
-  const d = new Date(date);
+  const d = new Date(date + "T00:00:00");
   if (isNaN(d.getTime())) return "-";
 
   const year = d.getFullYear();
@@ -436,8 +438,8 @@ const [deathCn, deathEn] =
 <RowCNEN
   labelCn="追思礼拜"
   labelEn="Memorial Service"
-  valueCn={memorialDt?.cn || "-"}
-  valueEn={memorialDt?.en}
+valueCn={(memorialDt as any)?.cn || "-"}
+valueEn={(memorialDt as any)?.en}
 />
 
 
@@ -445,8 +447,8 @@ const [deathCn, deathEn] =
 <RowCNEN
   labelCn="出殯礼拜"
   labelEn="Funeral Service"
-  valueCn={funeralDt.cn}
-  valueEn={funeralDt.en}
+  valueCn={(funeralDt as any)?.cn}
+  valueEn={(funeralDt as any)?.en}
 />
             
 {/*
@@ -503,8 +505,8 @@ const [deathCn, deathEn] =
 <RowCNEN
   labelCn="親屬集合時間"
   labelEn="Family Assembly"
-  valueCn={familyDt?.cn || "-"}
-  valueEn={familyDt?.en}
+  valueCn={(familyDt as any)?.cn || "-"}
+  valueEn={(familyDt as any)?.en}
 />
 
             <RowCNEN

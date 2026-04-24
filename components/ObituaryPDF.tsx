@@ -144,7 +144,7 @@ const formatDeathEN = (date?: string) => {
   });
 };
 
-const formatRange = (date, start, end) => {
+const formatRange = (date: any, start: any, end: any) => {
   if (!date || !start) return "";
 
   const s = new Date(`${date} ${start}`);
@@ -376,9 +376,9 @@ const RowCNEN = ({
       {typeof valueCn === "string" ? (
         <Text
           style={[
-            styles.valueCn,
-            isVenue && { fontSize: 11 }, // 👈 THIS IS YOUR FIX
-          ]}
+  styles.valueCn,
+  ...(isVenue ? [{ fontSize: 11 }] : []),
+]}
         >
           {valueCn}
         </Text>
@@ -428,7 +428,7 @@ const limitedZodiac =
     : zodiacData;
 
 
-  const formatRangeCN = (date, start, end) => {
+const formatRangeCN = (date: any, start: any, end: any) => {
   if (!date || !start) return "";
 
   const s = new Date(`${date} ${start}`);
@@ -590,7 +590,7 @@ return (
       ""
     )
   }
-  valueEn={encoffin.en}
+  valueEn={(encoffin as any)?.en}
 />
 
           <RowCNEN
@@ -624,8 +624,8 @@ return (
             style={[
               styles.valueCn,
               {
-                fontSize: 12,     // 🔥 smaller
-                lineHeight: 1.2,  // 🔥 tighter
+                fontSize: 12,
+                lineHeight: 1.2,
               },
             ]}
           >
@@ -640,7 +640,7 @@ return (
             style={[
               styles.valueCn,
               {
-                fontSize: 12,     // 🔥 apply SAME here
+                fontSize: 12,
                 lineHeight: 1.2,
               },
             ]}
@@ -652,7 +652,7 @@ return (
             style={[
               styles.valueEn,
               {
-                fontSize: 11,     // 🔥 slightly smaller English
+                fontSize: 11,
                 lineHeight: 1.2,
               },
             ]}
@@ -663,6 +663,7 @@ return (
       );
     })
   }
+  valueEn=""   // 👈 ADD THIS LINE
 />
     
 
