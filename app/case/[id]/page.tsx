@@ -141,7 +141,7 @@ const religion = (form.religion || "").toLowerCase().trim();
 
       {/* HEADER */}
       <div className="bg-white shadow p-5 rounded-xl">
-        <p className="text-sm text-gray-500">Case ID 案件编号</p>
+        <p className="text-sm text-gray-700 font-medium">Case ID 案件编号</p>
         <p className="text-3xl font-bold">{form.case_id}</p>
       </div>
 
@@ -150,7 +150,8 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* GENDER */}
         <div>
-          <strong>Gender 性别:</strong>{" "}
+          <span className="font-semibold text-gray-800">
+          Gender 性别:</span>{" "}
           {isEditing ? (
             <select
               value={form.gender || ""}
@@ -162,7 +163,9 @@ const religion = (form.religion || "").toLowerCase().trim();
               <option value="Female">Female 女</option>
             </select>
           ) : (
-            formatField("gender", form.gender)
+           <span className="text-gray-900">
+  {formatField("gender", form.gender)}
+</span>
           )}
         </div>
 
@@ -302,7 +305,7 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         <button
           onClick={() => router.push("/")}
-          className="text-sm text-gray-500 underline"
+          className="text-sm text-gray-700 underline"
         >
           ← Back
         </button>
