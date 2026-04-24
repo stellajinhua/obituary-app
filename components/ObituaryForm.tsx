@@ -372,11 +372,13 @@ const handleChange = (e: any) => {
       const deathValue = `${value}T00:00:00`; // 🔥 ensure correct format
       const auto = buildFuneralFlow(deathValue);
 
-      Object.keys(auto).forEach((key) => {
-        if (updated[key] == null || updated[key] === "") {
-          updated[key] = auto[key];
-        }
-      });
+Object.keys(auto).forEach((key) => {
+  const k = key as keyof typeof auto;
+
+  if ((updated as any)[k] == null || (updated as any)[k] === "") {
+    (updated as any)[k] = auto[k];
+  }
+});
     }
 
     // 👉 update funeral manually
