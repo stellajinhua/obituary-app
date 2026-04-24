@@ -702,7 +702,7 @@ setTimeout(() => {
     ? form.death_datetime.slice(0, 10)
     : ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full"
+    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
   />
 
   <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
@@ -722,7 +722,7 @@ setTimeout(() => {
   form?.funeral_datetime
     ? form.funeral_datetime.slice(0, 16)
     : ""
-} onChange={handleChange} className="border rounded-lg px-3 py-2 w-full" />
+} onChange={handleChange} className="border rounded-lg px-3 py-2 w-full box-border appearance-none" />
           <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
             {form.funeral_lunar_date}
           </div>
@@ -739,7 +739,7 @@ setTimeout(() => {
     name="encoffin_date"
     value={form.encoffin_date || ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full"
+    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
   />
 
 <div className="flex flex-col md:flex-row gap-3 w-full">
@@ -769,7 +769,7 @@ setTimeout(() => {
     name="family_date"
     value={form.family_date || ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full"
+    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
   />
 
   <input
@@ -777,7 +777,7 @@ setTimeout(() => {
     name="family_time"
     value={form.family_time || ""}
     onChange={handleChange}
-    className="border rounded-lg px-3 py-2 w-full"
+    className="border rounded-lg px-3 py-2 w-full box-border appearance-none"
   />
 
   <div className="flex flex-col gap-3">
