@@ -19,7 +19,7 @@ import {
 /* ------------------ FONT ------------------ */
 Font.register({
   family: "NotoSansSC",
-  src: "http://localhost:3000/fonts/NotoSansSC-Regular.otf",
+  src: "/fonts/NotoSansSC-Regular.otf",
 });
 
 

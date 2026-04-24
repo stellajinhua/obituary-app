@@ -14,15 +14,12 @@ import {
   Font,
 } from "@react-pdf/renderer";
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
 /* ------------------ FONT ------------------ */
-import { notoSansSC } from "@/lib/fontBase64";
 
 Font.register({
   family: "NotoSansSC",
-  src: "http://localhost:3000/fonts/NotoSansSC-Regular.otf",
+  src: "/fonts/NotoSansSC-Regular.otf",
 });
 
 function formatTimeENOnly(dateString?: string) {

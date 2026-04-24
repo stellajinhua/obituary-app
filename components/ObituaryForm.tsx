@@ -346,7 +346,14 @@ const handleChange = (e: any) => {
   const { name, value } = e.target;
 
   setForm((prev: any) => {
-    let updated = { ...prev, [name]: value };
+    let updated = { ...prev };
+
+    // 🔥 FIX: normalize death_datetime from date input
+    if (name === "death_datetime") {
+      updated[name] = value ? `${value}T00:00:00` : "";
+    } else {
+      updated[name] = value;
+    }
 
     // 👉 auto encoffin end (+1 hour)
     if (name === "encoffin_start" && value) {
@@ -361,16 +368,16 @@ const handleChange = (e: any) => {
     }
 
     // 👉 main trigger (death → everything)
-if (name === "death_datetime" && value) {
-  const auto = buildFuneralFlow(value);
+    if (name === "death_datetime" && value) {
+      const deathValue = `${value}T00:00:00`; // 🔥 ensure correct format
+      const auto = buildFuneralFlow(deathValue);
 
-  Object.keys(auto).forEach((key) => {
-    // only fill if empty
-if (updated[key] == null || updated[key] === "") {
-  (updated as any)[key] = (auto as any)[key];
-}
-  });
-}
+      Object.keys(auto).forEach((key) => {
+        if (updated[key] == null || updated[key] === "") {
+          updated[key] = auto[key];
+        }
+      });
+    }
 
     // 👉 update funeral manually
     if (name === "funeral_datetime" && value) {
@@ -688,7 +695,10 @@ setTimeout(() => {
   <input
     type="date"
     name="death_datetime"
-    value={form.death_datetime || ""}
+    value={
+  form?.death_datetime
+    ? form.death_datetime.slice(0, 10)
+    : ""}
     onChange={handleChange}
     className="border rounded-lg px-3 py-2 w-full"
   />
