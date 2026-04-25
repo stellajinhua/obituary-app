@@ -2,11 +2,11 @@ import ObituaryForm from "@/components/ObituaryForm";
 import { supabase } from "@/lib/supabaseClient";
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function Page({ params }: PageProps) {
-  const { id } = params;
+  const { id } = await params;
 
   const [obituaryRes, parloursRes, caseRes] = await Promise.all([
     supabase
@@ -27,7 +27,6 @@ export default async function Page({ params }: PageProps) {
       .maybeSingle(),
   ]);
 
-  // ✅ Extract data first (fixes TypeScript errors)
   const obituaryData = obituaryRes.data;
   const parlours = parloursRes.data;
   const caseData = caseRes.data;
