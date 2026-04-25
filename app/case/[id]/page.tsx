@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { cachedCase, cachedHome } from "@/lib/cache";
 
-
 export default function CasePage() {
   const router = useRouter();
   const params = useParams();
@@ -15,52 +14,45 @@ export default function CasePage() {
   const [form, setForm] = useState<any>(null);
   const [originalForm, setOriginalForm] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // ✅ FETCH
- useEffect(() => {
-  if (!caseUuid) return;
+  // ✅ FETCH (optimized + cached)
+  useEffect(() => {
+    if (!caseUuid) return;
 
-  // 🚀 1. Check cache first
-  if (cachedCase[caseUuid]) {
-    setForm(cachedCase[caseUuid]);
-    setOriginalForm(cachedCase[caseUuid]);
-    return;
-  }
-
-  const fetchCase = async () => {
-    let query = supabase
-      .from("cases")
-      .select("id, case_id, gender, dialect, food, religion, burialtype");
-
-    if (caseUuid.includes("-") && caseUuid.length > 20) {
-      query = query.eq("id", caseUuid);
-    } else {
-      query = query.eq("case_id", caseUuid);
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    if (error) {
-      console.error("Fetch error:", error);
+    if (cachedCase[caseUuid]) {
+      setForm(cachedCase[caseUuid]);
+      setOriginalForm(cachedCase[caseUuid]);
       return;
     }
 
-    if (!data) {
-      console.error("No case found for:", caseUuid);
-      return;
-    }
+    const fetchCase = async () => {
+      const { data, error } = await supabase
+        .from("cases")
+        .select("id, case_id, gender, dialect, food, religion, burialtype")
+        .eq("id", caseUuid)
+        .maybeSingle();
 
-    // ✅ set state
-    setForm(data);
-    setOriginalForm(data);
+      if (error) {
+        console.error("Fetch error:", error);
+        return;
+      }
 
-    // ✅ cache it
-    cachedCase[caseUuid] = data;
-  };
+      if (!data) {
+        console.error("No case found:", caseUuid);
+        return;
+      }
 
-  fetchCase();
-}, [caseUuid]);
+      setForm(data);
+      setOriginalForm(data);
 
+      cachedCase[caseUuid] = data;
+    };
+
+    fetchCase();
+  }, [caseUuid]);
+
+  // ✅ FIELD MAP
   const map = {
     gender: {
       Male: { en: "Male", cn: "男" },
@@ -72,7 +64,7 @@ export default function CasePage() {
     },
     dialect: {
       Cantonese: { en: "Cantonese", cn: "广东" },
-      ZhaoAnn: {en: "Zhao Ann", cn: "诏安"},
+      ZhaoAnn: { en: "Zhao Ann", cn: "诏安" },
       Foochow: { en: "Foochow", cn: "福州" },
       Hokkien: { en: "Hokkien", cn: "福建" },
       Henghua: { en: "Henghua", cn: "兴化" },
@@ -94,41 +86,46 @@ export default function CasePage() {
   const formatField = (category: any, value: string) => {
     if (!value) return "-";
     const item = (map as any)[category]?.[value];
-    if (!item) return value;
-    return `${item.en} ${item.cn}`;
+    return item ? `${item.en} ${item.cn}` : value;
   };
 
-  // ✅ SAVE
-const handleUpdate = async () => {
-  const { error } = await supabase
-    .from("cases")
-    .update({
-      gender: form.gender,
-      dialect: form.dialect,
-      food: form.food,
-      religion: form.religion,
-      burialtype: form.burialtype,
-    })
-    .eq("id", caseUuid);
+  // ✅ SAVE (optimized)
+  const handleUpdate = async () => {
+    if (!form) return;
 
-  if (!error) {
+    // 🚀 Optimistic update (instant UI)
     setIsEditing(false);
     setOriginalForm(form);
-
-    // ✅ update case cache
     cachedCase[caseUuid] = form;
 
-    // ✅ update homepage cache
     if (cachedHome?.completed?.case_uuid === caseUuid) {
       cachedHome.completed = {
         ...cachedHome.completed,
         ...form,
       };
     }
-  }
-};
 
-  // ✅ WHATSAPP (RESTORED)
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("cases")
+      .update({
+        gender: form.gender,
+        dialect: form.dialect,
+        food: form.food,
+        religion: form.religion,
+        burialtype: form.burialtype,
+      })
+      .eq("id", caseUuid);
+
+    setSaving(false);
+
+    if (error) {
+      console.error("Save failed:", error);
+    }
+  };
+
+  // ✅ WHATSAPP
   function formatWhatsAppMessage(form: any) {
     return `🪦 Case No: ${form.case_id}
 
@@ -150,17 +147,10 @@ Service Type: ${(map as any).service?.[form.burialtype]?.en || "-"}
 `;
   }
 
-
-if (!form) return null;
-
-const isChristian = form.religion === "Christian";
-const caseId = form.case_id;
-const religion = (form.religion || "").toLowerCase().trim();
-
+  if (!form) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="p-6 space-y-6">
-
       {/* HEADER */}
       <div className="bg-white shadow p-5 rounded-xl">
         <p className="text-sm text-gray-700 font-medium">Case ID 案件编号</p>
@@ -172,36 +162,27 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* GENDER */}
         <div>
-          <span className="font-semibold text-gray-800">
-          Gender 性别:</span>{" "}
+          <span className="font-semibold">Gender 性别:</span>{" "}
           {isEditing ? (
             <select
               value={form.gender || ""}
-              onChange={(e) =>
-                setForm({ ...form, gender: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
             >
               <option value="Male">Male 男</option>
               <option value="Female">Female 女</option>
             </select>
           ) : (
-           <span className="text-gray-900">
-             {formatField("gender", form.gender)}
-          </span>
+            formatField("gender", form.gender)
           )}
         </div>
 
         {/* DIALECT */}
         <div>
-          <span className="font-semibold text-gray-800">
-            Dialect 籍贯:
-          </span>{" "}
+          <span className="font-semibold">Dialect 籍贯:</span>{" "}
           {isEditing ? (
             <select
               value={form.dialect || ""}
-              onChange={(e) =>
-                setForm({ ...form, dialect: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, dialect: e.target.value })}
             >
               <option value="Cantonese">Cantonese 广东</option>
               <option value="ZhaoAnn">ZhaoAnn 诏安</option>
@@ -219,15 +200,11 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* FOOD */}
         <div>
-          <span className="font-semibold text-gray-800">
-            Food 餐食:
-          </span>{" "}
+          <span className="font-semibold">Food 餐食:</span>{" "}
           {isEditing ? (
             <select
               value={form.food || ""}
-              onChange={(e) =>
-                setForm({ ...form, food: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, food: e.target.value })}
             >
               <option value="Vegetarian">Vegetarian 斋</option>
               <option value="Non-Vegetarian">Non-Vegetarian 荤</option>
@@ -240,15 +217,11 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* RELIGION */}
         <div>
-          <span className="font-semibold text-gray-800">
-            Religion 宗教:
-          </span>{" "}
+          <span className="font-semibold">Religion 宗教:</span>{" "}
           {isEditing ? (
             <select
               value={form.religion || ""}
-              onChange={(e) =>
-                setForm({ ...form, religion: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, religion: e.target.value })}
             >
               <option value="Buddhist">Buddhist 佛教</option>
               <option value="Christian">Christian 基督教</option>
@@ -260,8 +233,7 @@ const religion = (form.religion || "").toLowerCase().trim();
 
         {/* SERVICE */}
         <div>
-          <span className="font-semibold text-gray-800">
-            Service 类型: </span>{" "}
+          <span className="font-semibold">Service 类型:</span>{" "}
           {isEditing ? (
             <select
               value={form.burialtype || ""}
@@ -276,7 +248,6 @@ const religion = (form.religion || "").toLowerCase().trim();
             formatField("service", form.burialtype)
           )}
         </div>
-
       </div>
 
       {/* ACTIONS */}
@@ -293,9 +264,10 @@ const religion = (form.religion || "").toLowerCase().trim();
           <>
             <button
               onClick={handleUpdate}
+              disabled={saving}
               className="bg-green-600 text-white px-4 py-2 rounded"
             >
-              Save 保存
+              {saving ? "Saving..." : "Save 保存"}
             </button>
 
             <button
@@ -310,7 +282,6 @@ const religion = (form.religion || "").toLowerCase().trim();
           </>
         )}
 
-        {/* ✅ WHATSAPP BACK */}
         <button
           onClick={() => {
             const message = formatWhatsAppMessage(form);
@@ -321,10 +292,10 @@ const religion = (form.religion || "").toLowerCase().trim();
           WhatsApp
         </button>
 
-        {/* CONTINUE */}
+        {/* 🚀 INSTANT NAVIGATION */}
         <button
-          onClick={async () => {
-            if (isEditing) await handleUpdate();
+          onClick={() => {
+            if (isEditing) handleUpdate(); // no await
             router.push(`/case/${caseUuid}/edit`);
           }}
           className="bg-black text-white px-4 py-2 rounded"
@@ -332,15 +303,14 @@ const religion = (form.religion || "").toLowerCase().trim();
           Continue to Obituary
         </button>
 
-       <button
-        onMouseEnter={() => router.prefetch("/")}
-        onTouchStart={() => router.prefetch("/")}
-        onClick={() => router.push("/")}
-        className="text-sm text-gray-700 underline"
-          >
-             ← Back
+        <button
+          onMouseEnter={() => router.prefetch("/")}
+          onTouchStart={() => router.prefetch("/")}
+          onClick={() => router.push("/")}
+          className="text-sm text-gray-700 underline"
+        >
+          ← Back
         </button>
-
       </div>
     </div>
   );
