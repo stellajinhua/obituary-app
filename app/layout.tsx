@@ -59,7 +59,8 @@ export default function RootLayout({
     >
       <head>
         {/* 🔥 CRITICAL FIX FOR IOS */}
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#000000" />
       </head>
