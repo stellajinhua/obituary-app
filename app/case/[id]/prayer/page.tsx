@@ -19,6 +19,7 @@ export default function PrayerPage() {
   const [prayers, setPrayers] = useState<any[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [contact, setContact] = useState({
     name: "",
@@ -52,97 +53,98 @@ export default function PrayerPage() {
   }, [rawId]);
 
   // 🔹 fetch data
-  // 🔹 fetch data
-useEffect(() => {
-  const fetchData = async () => {
-    if (!caseId) return;
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!caseId) return;
 
-    try {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      const [caseRes, obRes, prayerRes] = await Promise.all([
-        supabase
-          .from("cases")
-          .select("religion, contact_name, contact_phone, contact_relationship, case_id")
-          .eq("id", caseId)
-          .single(),
+        const [caseRes, obRes, prayerRes] = await Promise.all([
+          supabase
+            .from("cases")
+            .select("religion, contact_name, contact_phone, contact_relationship")
+            .eq("id", caseId)
+            .single(),
 
-        supabase
-          .from("obituaries")
-          .select("name_cn, name_ic, death_datetime")
-          .eq("case_uuid", caseId)
-          .single(),
+          supabase
+            .from("obituaries")
+            .select("name_cn, name_ic, death_datetime")
+            .eq("case_uuid", caseId)
+            .single(),
 
-        supabase
-          .from("prayer_schedules")
-          .select("*")
-          .eq("case_uuid", caseId),
-      ]);
+          supabase
+            .from("prayer_schedules")
+            .select("*")
+            .eq("case_uuid", caseId),
+        ]);
 
-      const caseData = caseRes.data;
-      const obData = obRes.data;
-      const existing = prayerRes.data;
+        const caseData = caseRes.data;
+        const obData = obRes.data;
+        const existing = prayerRes.data;
 
-      if (!caseData || !obData) {
-        setLoading(false);
-        return;
-      }
-
-      if (caseData.religion !== "Buddhist") {
-        router.push(`/case/${caseId}`);
-        return;
-      }
-
-      setContact({
-        name: caseData.contact_name || "",
-        phone: caseData.contact_phone || "",
-        relationship: caseData.contact_relationship || "",
-      });
-
-      setObituary(obData);
-
-      const generated = generatePrayerData(obData.death_datetime);
-
-      const existingMap = new Map(
-        (existing || []).map((p: any) => [p.prayer_type, p])
-      );
-
-      const merged = generated.map((g: any) => {
-        const db = existingMap.get(g.type);
-
-        if (db) {
-          return {
-            ...g,
-            ...db,
-            type: db.prayer_type,
-            label: PRAYER_LABELS[db.prayer_type] || db.prayer_type,
-            isManual: db.is_manual || false,
-          };
+        if (!caseData || !obData) {
+          setLoading(false);
+          return;
         }
 
-        return { ...g, isManual: false };
-      });
+        if (caseData.religion !== "Buddhist") {
+          router.push(`/case/${caseId}`);
+          return;
+        }
 
-      merged.sort(
-        (a, b) =>
-          PRAYER_ORDER.indexOf(a.type) -
-          PRAYER_ORDER.indexOf(b.type)
-      );
+        setContact({
+          name: caseData.contact_name || "",
+          phone: caseData.contact_phone || "",
+          relationship: caseData.contact_relationship || "",
+        });
 
-      setPrayers(merged);
-      setSelected(existing?.map((p: any) => p.prayer_type) || []);
+        setObituary(obData);
 
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+        // ✅ ALWAYS generate fresh from death date
+        const generated = generatePrayerData(obData.death_datetime);
 
-  fetchData();
-}, [caseId]);
+        const existingMap = new Map(
+          (existing || []).map((p: any) => [p.prayer_type, p])
+        );
 
+        const merged = generated.map((g: any) => {
+          const db = existingMap.get(g.type);
 
+          if (db) {
+            return {
+              ...g,
+              ...db,
+              type: db.prayer_type,
+              label: PRAYER_LABELS[db.prayer_type] || db.prayer_type,
+              isManual: db.is_manual || false,
+            };
+          }
+
+          return {
+            ...g,
+            label: PRAYER_LABELS[g.type] || g.type,
+            isManual: false,
+          };
+        });
+
+        merged.sort(
+          (a, b) =>
+            PRAYER_ORDER.indexOf(a.type) -
+            PRAYER_ORDER.indexOf(b.type)
+        );
+
+        setPrayers(merged);
+        setSelected(existing?.map((p: any) => p.prayer_type) || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [caseId]);
 
   // 🔹 toggle
   const toggle = (type: string) => {
@@ -178,272 +180,258 @@ useEffect(() => {
     setPrayers(updated);
   };
 
-  // 🔹 reset
+  // 🔥 FIXED RESET (RECALCULATE FROM SOURCE)
   const handleReset = (index: number) => {
+    if (!obituary?.death_datetime) return;
+
+    const fresh = generatePrayerData(obituary.death_datetime);
+    const targetType = prayers[index].type;
+
+    const freshItem = fresh.find((f: any) => f.type === targetType);
+    if (!freshItem) return;
+
     const updated = [...prayers];
 
     updated[index] = {
       ...updated[index],
-      western_date: updated[index].original_date,
-      western_day: updated[index].original_day,
-      lunar_month: updated[index].original_lunar_month,
-      lunar_day: updated[index].original_lunar_day,
-      lunar_day_name: updated[index].original_lunar_day_name,
+      ...freshItem,
+      label: PRAYER_LABELS[targetType] || targetType,
       isManual: false,
     };
 
     setPrayers(updated);
   };
 
-  // 🔹 SAVE (FULL FIX)
-  const [saving, setSaving] = useState(false);
-
-const handleSave = async () => {
-  if (selected.length === 0) {
-    alert("Please select at least one prayer");
-    return;
-  }
-
-  setSaving(true);
-
-  try {
-    // 🚀 1. update contact (no need to wait later)
-    const updatePromise = supabase
-      .from("cases")
-      .update({
-        contact_name: contact.name,
-        contact_phone: contact.phone,
-        contact_relationship: contact.relationship,
-      })
-      .eq("id", caseId);
-
-    // 🚀 2. prepare payload (REMOVED extra case_id fetch)
-    const payload = prayers
-      .filter((p) => selected.includes(p.type))
-      .map((p) => ({
-        case_uuid: caseId,
-        prayer_type: p.type,
-        western_date: p.western_date,
-        western_day: p.western_day,
-        lunar_month: p.lunar_month,
-        lunar_day: p.lunar_day,
-        lunar_day_name: p.lunar_day_name,
-        reminder_date: p.reminder_date,
-        is_manual: p.isManual || false,
-      }));
-
-    // 🚀 3. delete logic
-    const deletePromise =
-      selected.length > 0
-        ? supabase
-            .from("prayer_schedules")
-            .delete()
-            .eq("case_uuid", caseId)
-            .not(
-              "prayer_type",
-              "in",
-              `(${selected.map((s) => `"${s}"`).join(",")})`
-            )
-        : supabase
-            .from("prayer_schedules")
-            .delete()
-            .eq("case_uuid", caseId);
-
-    // 🚀 4. upsert
-    const upsertPromise = supabase
-      .from("prayer_schedules")
-      .upsert(payload, {
-        onConflict: "case_uuid,prayer_type",
-      });
-
-    // 🚀 5. run ALL together (massive speed improvement)
-    const [updateRes, deleteRes, upsertRes] = await Promise.all([
-      updatePromise,
-      deletePromise,
-      upsertPromise,
-    ]);
-
-    if (deleteRes.error) {
-      console.error(deleteRes.error);
-      alert("Error deleting old prayers");
+  // 🔹 SAVE
+  const handleSave = async () => {
+    if (selected.length === 0) {
+      alert("Please select at least one prayer");
       return;
     }
 
-    if (upsertRes.error) {
-      console.error(upsertRes.error);
-      alert("Error saving");
-      return;
+    setSaving(true);
+
+    try {
+      const updatePromise = supabase
+        .from("cases")
+        .update({
+          contact_name: contact.name,
+          contact_phone: contact.phone,
+          contact_relationship: contact.relationship,
+        })
+        .eq("id", caseId);
+
+      const payload = prayers
+        .filter((p) => selected.includes(p.type))
+        .map((p) => ({
+          case_uuid: caseId,
+          prayer_type: p.type,
+          western_date: p.western_date,
+          western_day: p.western_day,
+          lunar_month: p.lunar_month,
+          lunar_day: p.lunar_day,
+          lunar_day_name: p.lunar_day_name,
+          reminder_date: p.reminder_date,
+          is_manual: p.isManual || false,
+        }));
+
+      const deletePromise =
+        selected.length > 0
+          ? supabase
+              .from("prayer_schedules")
+              .delete()
+              .eq("case_uuid", caseId)
+              .not(
+                "prayer_type",
+                "in",
+                `(${selected.map((s) => `"${s}"`).join(",")})`
+              )
+          : supabase
+              .from("prayer_schedules")
+              .delete()
+              .eq("case_uuid", caseId);
+
+      const upsertPromise = supabase
+        .from("prayer_schedules")
+        .upsert(payload, {
+          onConflict: "case_uuid,prayer_type",
+        });
+
+      const [, deleteRes, upsertRes] = await Promise.all([
+        updatePromise,
+        deletePromise,
+        upsertPromise,
+      ]);
+
+      if (deleteRes.error) {
+        console.error(deleteRes.error);
+        alert("Error deleting old prayers");
+        return;
+      }
+
+      if (upsertRes.error) {
+        console.error(upsertRes.error);
+        alert("Error saving");
+        return;
+      }
+
+      router.push(`/case/${caseId}`);
+    } catch (err) {
+      console.error(err);
+      alert("Unexpected error");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    // 🚀 instant navigation (no extra waiting)
-    router.push(`/case/${caseId}`);
-  } catch (err) {
-    console.error(err);
-    alert("Unexpected error");
-  } finally {
-    setSaving(false);
-  }
-};
-  
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (!obituary) return <div className="p-4">No obituary found</div>;
 
-if (loading) return <div className="p-4">Loading...</div>;
-if (!obituary) return <div className="p-4">No obituary found</div>;
+  return (
+    <div className="min-h-screen bg-gray-50">
 
-return (
-  <div className="min-h-screen bg-gray-50">
-
-    {/* 🔝 Sticky Header (MATCHED) */}
-    <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center gap-3">
-      <button
-        onClick={() => router.push(`/case/${caseId}`)}
-        className="text-base font-medium text-gray-700"
-      >
-        ← Back
-      </button>
-
-      <h1 className="text-base font-semibold text-gray-900">
-        Prayer Schedule
-      </h1>
-    </div>
-
-    {/* Content */}
-    <div className="px-4 py-6 space-y-6">
-
-      {/* 👤 Deceased Info */}
-      <div className="bg-white border rounded-2xl p-5 text-center space-y-1">
-        <h2 className="text-lg font-bold text-gray-900">
-          {obituary.name_cn}
-        </h2>
-
-        {obituary.name_ic && (
-          <div className="text-sm text-gray-600">
-            {obituary.name_ic}
-          </div>
-        )}
-
-        <div className="text-sm text-gray-500 mt-2">
-          Death Date:{" "}
-          {obituary?.death_datetime
-         ? formatDate(obituary.death_datetime)
-          : "No date"}
-        </div>
-      </div>
-
-      {/* 📞 Contact */}
-      <div className="bg-white border rounded-2xl p-5 space-y-3">
-        <h3 className="text-base font-semibold text-gray-800">
-          Contact Person
-        </h3>
-
-        <input
-          placeholder="Name"
-          value={contact.name}
-          onChange={(e) =>
-            setContact({ ...contact, name: e.target.value })
-          }
-          className="w-full border p-3 rounded-lg text-base"
-        />
-
-        <input
-          placeholder="Phone"
-          value={contact.phone}
-          onChange={(e) =>
-            setContact({ ...contact, phone: e.target.value })
-          }
-          className="w-full border p-3 rounded-lg text-base"
-        />
-
-        <select
-          value={contact.relationship}
-          onChange={(e) =>
-            setContact({ ...contact, relationship: e.target.value })
-          }
-          className="w-full border p-3 rounded-lg text-base"
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center gap-3">
+        <button
+          onClick={() => router.push(`/case/${caseId}`)}
+          className="text-base font-medium text-gray-700"
         >
-          <option value="">Select Relationship</option>
-          <option value="Son">Son 儿子</option>
-          <option value="Daughter">Daughter 女儿</option>
-        </select>
+          ← Back
+        </button>
+
+        <h1 className="text-base font-semibold text-gray-900">
+          Prayer Schedule
+        </h1>
       </div>
 
-      {/* 🕯 Prayer List */}
-      <div className="space-y-4">
-        {prayers.map((p, index) => (
-          <div
-            key={p.type}
-            className="bg-white border rounded-2xl p-4 shadow-sm"
+      <div className="px-4 py-6 space-y-6">
+
+        {/* Deceased */}
+        <div className="bg-white border rounded-2xl p-5 text-center space-y-1">
+          <h2 className="text-lg font-bold text-gray-900">
+            {obituary.name_cn}
+          </h2>
+
+          {obituary.name_ic && (
+            <div className="text-sm text-gray-600">
+              {obituary.name_ic}
+            </div>
+          )}
+
+          <div className="text-sm text-gray-500 mt-2">
+            Death Date:{" "}
+            {obituary.death_datetime
+              ? formatDate(obituary.death_datetime)
+              : "No date"}
+          </div>
+        </div>
+
+        {/* Contact */}
+        <div className="bg-white border rounded-2xl p-5 space-y-3">
+          <h3 className="text-base font-semibold text-gray-800">
+            Contact Person
+          </h3>
+
+          <input
+            placeholder="Name"
+            value={contact.name}
+            onChange={(e) =>
+              setContact({ ...contact, name: e.target.value })
+            }
+            className="w-full border p-3 rounded-lg"
+          />
+
+          <input
+            placeholder="Phone"
+            value={contact.phone}
+            onChange={(e) =>
+              setContact({ ...contact, phone: e.target.value })
+            }
+            className="w-full border p-3 rounded-lg"
+          />
+
+          <select
+            value={contact.relationship}
+            onChange={(e) =>
+              setContact({ ...contact, relationship: e.target.value })
+            }
+            className="w-full border p-3 rounded-lg"
           >
-            <label className="flex gap-3 items-start">
+            <option value="">Select Relationship</option>
+            <option value="Son">Son 儿子</option>
+            <option value="Daughter">Daughter 女儿</option>
+          </select>
+        </div>
 
-              <input
-                type="checkbox"
-                checked={selected.includes(p.type)}
-                onChange={() => toggle(p.type)}
-                className="mt-1"
-              />
-
-              <div className="w-full space-y-2">
-
-                <div className="font-semibold text-gray-900">
-                  {p.type} {p.label}
-                </div>
+        {/* Prayer List */}
+        <div className="space-y-4">
+          {prayers.map((p, index) => (
+            <div key={p.type} className="bg-white border rounded-2xl p-4">
+              <label className="flex gap-3">
 
                 <input
-                  type="date"
-                  value={p.western_date}
-                  onChange={(e) =>
-                    handleDateChange(index, e.target.value)
-                  }
-                  className="border px-3 py-2 rounded-lg w-full text-base"
+                  type="checkbox"
+                  checked={selected.includes(p.type)}
+                  onChange={() => toggle(p.type)}
                 />
 
-                <div className="text-sm text-gray-600">
-                {p.western_date
-                  ? new Date(p.western_date + "T00:00:00").toLocaleDateString("en-GB")
-                  : "No date"} ({p.western_day})
-                  
-                </div>
+                <div className="w-full space-y-2">
 
-                <div className="text-sm text-gray-700">
-                  {p.lunar_month} {p.lunar_day} {p.lunar_day_name}
-                </div>
+                  <div className="font-semibold">
+                    {p.type} {p.label}
+                  </div>
 
-                <div className="text-xs flex gap-2">
-                  {p.isManual ? (
-                    <>
-                      <span className="text-orange-600">
-                        🟠 Manual
-                      </span>
-                      <button
-                        onClick={() => handleReset(index)}
-                        className="text-blue-600 underline"
-                      >
-                        Reset
-                      </button>
-                    </>
-                  ) : (
-                    <span className="text-green-600">
-                      🟢 Auto
-                    </span>
-                  )}
-                </div>
+                  <input
+                    type="date"
+                    value={p.western_date}
+                    onChange={(e) =>
+                      handleDateChange(index, e.target.value)
+                    }
+                    className="border px-3 py-2 rounded-lg w-full"
+                  />
 
-              </div>
-            </label>
-          </div>
-        ))}
+                  <div className="text-sm text-gray-600">
+                    {p.western_date
+                      ? new Date(p.western_date + "T00:00:00").toLocaleDateString("en-GB")
+                      : "No date"} ({p.western_day})
+                  </div>
+
+                  <div className="text-sm text-gray-700">
+                    {p.lunar_month} {p.lunar_day} {p.lunar_day_name}
+                  </div>
+
+                  <div className="text-xs flex gap-2">
+                    {p.isManual ? (
+                      <>
+                        <span className="text-orange-600">Manual</span>
+                        <button
+                          onClick={() => handleReset(index)}
+                          className="text-blue-600 underline"
+                        >
+                          Reset
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-green-600">Auto</span>
+                    )}
+                  </div>
+
+                </div>
+              </label>
+            </div>
+          ))}
+        </div>
+
+        {/* Save */}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full bg-black text-white py-4 rounded-xl"
+        >
+          {saving ? "Saving..." : "Save Prayer Schedule"}
+        </button>
+
       </div>
-
-      {/* 💾 Save Button */}
-     <button
-  onClick={handleSave}
-  disabled={saving}
-  className="w-full bg-black text-white py-4 rounded-xl text-base font-medium"
->
-  {saving ? "Saving..." : "Save Prayer Schedule"}
-</button>
-
     </div>
-  </div>
-);
-  }
+  );
+}
