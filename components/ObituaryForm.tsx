@@ -280,7 +280,7 @@ const formatTime = (d: Date) => {
 
 const formatWeekday = (dateStr: string) => {
   if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  const d = new Date(dateStr);
   const days = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
   return days[d.getDay()];
 };
@@ -289,7 +289,7 @@ const formatLunar = (dateStr: string) => {
   if (!dateStr) return "";
 
   try {
-    const d = new Date(dateStr + "T00:00:00");
+    const d = new Date(dateStr);
 
     if (isNaN(d.getTime())) return "";
 
@@ -308,7 +308,7 @@ const formatLunar = (dateStr: string) => {
 const buildFuneralFlow = (deathStr: string) => {
   if (!deathStr) return {};
 
-  const death = new Date(deathStr + "T00:00:00");
+  const death = new Date(deathStr);
   if (isNaN(death.getTime())) return {};
 
 
@@ -342,7 +342,7 @@ const handleChange = useCallback((e: any) => {
 
     // normalize death_datetime
     if (name === "death_datetime") {
-      updated[name] = value ? `${value}T00:00:00` : "";
+      updated[name] = value;
     } else {
       updated[name] = value;
     }
