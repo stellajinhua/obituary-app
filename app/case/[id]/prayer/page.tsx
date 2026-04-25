@@ -60,15 +60,30 @@ useEffect(() => {
     try {
       setLoading(true);
 
-      const { data: caseData } = await supabase
-        .from("cases")
-        .select(
-          "religion, contact_name, contact_phone, contact_relationship"
-        )
-        .eq("id", caseId)
-        .single();
+      const [caseRes, obRes, prayerRes] = await Promise.all([
+        supabase
+          .from("cases")
+          .select("religion, contact_name, contact_phone, contact_relationship, case_id")
+          .eq("id", caseId)
+          .single(),
 
-      if (!caseData) {
+        supabase
+          .from("obituaries")
+          .select("name_cn, name_ic, death_datetime")
+          .eq("case_uuid", caseId)
+          .single(),
+
+        supabase
+          .from("prayer_schedules")
+          .select("*")
+          .eq("case_uuid", caseId),
+      ]);
+
+      const caseData = caseRes.data;
+      const obData = obRes.data;
+      const existing = prayerRes.data;
+
+      if (!caseData || !obData) {
         setLoading(false);
         return;
       }
@@ -84,70 +99,30 @@ useEffect(() => {
         relationship: caseData.contact_relationship || "",
       });
 
-      const { data: obData } = await supabase
-        .from("obituaries")
-        .select("name_cn, name_ic, death_datetime")
-        .eq("case_uuid", caseId)
-        .single();
-
-      if (!obData) {
-        setLoading(false);
-        return;
-      }
-
       setObituary(obData);
 
-      const { data: existing } = await supabase
-        .from("prayer_schedules")
-        .select("*")
-        .eq("case_uuid", caseId);
-
-      // ✅ ALWAYS generate full list
       const generated = generatePrayerData(obData.death_datetime);
 
-      // ✅ map DB into lookup
       const existingMap = new Map(
         (existing || []).map((p: any) => [p.prayer_type, p])
       );
 
-      // ✅ merge generated + DB
       const merged = generated.map((g: any) => {
         const db = existingMap.get(g.type);
 
         if (db) {
           return {
+            ...g,
+            ...db,
             type: db.prayer_type,
             label: PRAYER_LABELS[db.prayer_type] || db.prayer_type,
-
-            western_date: db.western_date,
-            western_day: db.western_day,
-            lunar_month: db.lunar_month,
-            lunar_day: db.lunar_day,
-            lunar_day_name: db.lunar_day_name,
-            reminder_date: db.reminder_date,
             isManual: db.is_manual || false,
-
-            original_date: g.western_date,
-            original_day: g.western_day,
-            original_lunar_month: g.lunar_month,
-            original_lunar_day: g.lunar_day,
-            original_lunar_day_name: g.lunar_day_name,
           };
         }
 
-        return {
-          ...g,
-          isManual: false,
-
-          original_date: g.western_date,
-          original_day: g.western_day,
-          original_lunar_month: g.lunar_month,
-          original_lunar_day: g.lunar_day,
-          original_lunar_day_name: g.lunar_day_name,
-        };
+        return { ...g, isManual: false };
       });
 
-      // ✅ keep order
       merged.sort(
         (a, b) =>
           PRAYER_ORDER.indexOf(a.type) -
@@ -155,8 +130,6 @@ useEffect(() => {
       );
 
       setPrayers(merged);
-
-      // ✅ selected comes ONLY from DB
       setSelected(existing?.map((p: any) => p.prayer_type) || []);
 
       setLoading(false);
@@ -223,13 +196,19 @@ useEffect(() => {
   };
 
   // 🔹 SAVE (FULL FIX)
-  const handleSave = async () => {
-    if (selected.length === 0) {
-      alert("Please select at least one prayer");
-      return;
-    }
+  const [saving, setSaving] = useState(false);
 
-    await supabase
+const handleSave = async () => {
+  if (selected.length === 0) {
+    alert("Please select at least one prayer");
+    return;
+  }
+
+  setSaving(true);
+
+  try {
+    // 🚀 1. update contact (no need to wait later)
+    const updatePromise = supabase
       .from("cases")
       .update({
         contact_name: contact.name,
@@ -238,17 +217,11 @@ useEffect(() => {
       })
       .eq("id", caseId);
 
-    const { data: caseData } = await supabase
-      .from("cases")
-      .select("case_id")
-      .eq("id", caseId)
-      .single();
-
+    // 🚀 2. prepare payload (REMOVED extra case_id fetch)
     const payload = prayers
       .filter((p) => selected.includes(p.type))
       .map((p) => ({
         case_uuid: caseId,
-        case_id: caseData?.case_id,
         prayer_type: p.type,
         western_date: p.western_date,
         western_day: p.western_day,
@@ -259,52 +232,58 @@ useEffect(() => {
         is_manual: p.isManual || false,
       }));
 
+    // 🚀 3. delete logic
+    const deletePromise =
+      selected.length > 0
+        ? supabase
+            .from("prayer_schedules")
+            .delete()
+            .eq("case_uuid", caseId)
+            .not(
+              "prayer_type",
+              "in",
+              `(${selected.map((s) => `"${s}"`).join(",")})`
+            )
+        : supabase
+            .from("prayer_schedules")
+            .delete()
+            .eq("case_uuid", caseId);
 
-let deleteError = null;
+    // 🚀 4. upsert
+    const upsertPromise = supabase
+      .from("prayer_schedules")
+      .upsert(payload, {
+        onConflict: "case_uuid,prayer_type",
+      });
 
-// ✅ DELETE
-if (selected.length > 0) {
-  const selectedList = selected.map((s) => `"${s}"`).join(",");
+    // 🚀 5. run ALL together (massive speed improvement)
+    const [updateRes, deleteRes, upsertRes] = await Promise.all([
+      updatePromise,
+      deletePromise,
+      upsertPromise,
+    ]);
 
-  const { error } = await supabase
-    .from("prayer_schedules")
-    .delete()
-    .eq("case_uuid", caseId)
-    .not("prayer_type", "in", `(${selectedList})`);
+    if (deleteRes.error) {
+      console.error(deleteRes.error);
+      alert("Error deleting old prayers");
+      return;
+    }
 
-  deleteError = error;
-} else {
-  const { error } = await supabase
-    .from("prayer_schedules")
-    .delete()
-    .eq("case_uuid", caseId);
+    if (upsertRes.error) {
+      console.error(upsertRes.error);
+      alert("Error saving");
+      return;
+    }
 
-  deleteError = error;
-}
-
-// ✅ UPSERT
-const { error: upsertError } = await supabase
-  .from("prayer_schedules")
-  .upsert(payload, {
-    onConflict: "case_uuid,prayer_type",
-  });
-
-// ✅ ERROR HANDLING
-if (deleteError) {
-  console.error(deleteError);
-  alert("Error deleting old prayers");
-  return;
-}
-
-if (upsertError) {
-  console.error(upsertError);
-  alert("Error saving");
-} else {
-  alert("Saved successfully");
-  router.push(`/case/${caseId}`);
-}
-
+    // 🚀 instant navigation (no extra waiting)
+    router.push(`/case/${caseId}`);
+  } catch (err) {
+    console.error(err);
+    alert("Unexpected error");
+  } finally {
+    setSaving(false);
   }
+};
   
 
 if (loading) return <div className="p-4">Loading...</div>;
@@ -456,12 +435,13 @@ return (
       </div>
 
       {/* 💾 Save Button */}
-      <button
-        onClick={handleSave}
-        className="w-full bg-black text-white py-4 rounded-xl text-base font-medium"
-      >
-        Save Prayer Schedule
-      </button>
+     <button
+  onClick={handleSave}
+  disabled={saving}
+  className="w-full bg-black text-white py-4 rounded-xl text-base font-medium"
+>
+  {saving ? "Saving..." : "Save Prayer Schedule"}
+</button>
 
     </div>
   </div>
