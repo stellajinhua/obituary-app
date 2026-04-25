@@ -1,33 +1,44 @@
 import ObituaryForm from "@/components/ObituaryForm";
 import { supabase } from "@/lib/supabaseClient";
 
-export default async function Page({ params }: any) {
-  const { id } = await params; // 🔥 MUST await
+type PageProps = {
+  params: { id: string };
+};
 
-  const { data: obituaryData } = await supabase
-    .from("obituaries")
-    .select("*")
-    .eq("case_uuid", id)
-    .single();
+export default async function Page({ params }: PageProps) {
+  const { id } = params;
 
-  const { data: parlours } = await supabase
-    .from("locations")
-    .select("*")
-    .order("name_en");
+  const [obituaryRes, parloursRes, caseRes] = await Promise.all([
+    supabase
+      .from("obituaries")
+      .select("*")
+      .eq("case_uuid", id)
+      .maybeSingle(),
 
-const { data: caseData } = await supabase
-  .from("cases")
-  .select("religion, burialtype")
-  .eq("id", id)
-  .maybeSingle();
+    supabase
+      .from("locations")
+      .select("*")
+      .order("name_en"),
+
+    supabase
+      .from("cases")
+      .select("religion, burialtype")
+      .eq("id", id)
+      .maybeSingle(),
+  ]);
+
+  // ✅ Extract data first (fixes TypeScript errors)
+  const obituaryData = obituaryRes.data;
+  const parlours = parloursRes.data;
+  const caseData = caseRes.data;
 
   return (
     <ObituaryForm
-      parlours={parlours || []}
+      parlours={parlours ?? []}
       caseId={id}
-      religion={caseData?.religion || "Buddhist"} // 🔥 prevent undefined
-      burialtype={caseData?.burialtype}
-      initialData={obituaryData || null}
+      religion={caseData?.religion ?? "Buddhist"}
+      burialtype={caseData?.burialtype ?? null}
+      initialData={obituaryData ?? null}
     />
   );
 }
