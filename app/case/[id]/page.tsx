@@ -294,14 +294,16 @@ Service Type: ${(map as any).service?.[form.burialtype]?.en || "-"}
 
         {/* 🚀 INSTANT NAVIGATION */}
         <button
-          onClick={() => {
-            if (isEditing) handleUpdate(); // no await
-            router.push(`/case/${caseUuid}/edit`);
-          }}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Continue to Obituary
-        </button>
+  onMouseEnter={() => router.prefetch(`/case/${caseUuid}/edit`)}
+  onTouchStart={() => router.prefetch(`/case/${caseUuid}/edit`)}
+  onClick={() => {
+    if (isEditing) handleUpdate();
+    router.push(`/case/${caseUuid}/edit`);
+  }}
+  className="bg-black text-white px-4 py-2 rounded"
+>
+  Continue to Obituary
+</button>
 
         <button
           onMouseEnter={() => router.prefetch("/")}
