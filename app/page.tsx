@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { formatDate } from "@/lib/date";
 import Card from "@/components/Card";
+import { cachedHome } from "@/lib/cache";
 
 
 export default function Home() {
@@ -13,51 +14,74 @@ export default function Home() {
   const [incomplete, setIncomplete] = useState<any>(null);
   const [completed, setCompleted] = useState<any>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
+useEffect(() => {
+  if (cachedHome.completed !== undefined) {
+    setIncomplete(cachedHome.incomplete);
+    setCompleted(cachedHome.completed);
+    return;
+  }
+
+  const fetchData = async () => {
       // ✅ Cases
-      const { data: cases } = await supabase
-        .from("cases")
-        .select("id, case_id")
-        .order("case_id", { ascending: false });
+// 1️⃣ Get latest 5 cases
+const { data: cases } = await supabase
+  .from("cases")
+  .select("id, case_id")
+  .order("case_id", { ascending: false })
+  .limit(5);
 
-      // ✅ Obituaries
-      const { data: obituaries } = await supabase
-        .from("obituaries")
-        .select("case_uuid");
+// 2️⃣ For these 5, check which ones already have obituary
+const ids = (cases || []).map(c => c.id);
 
-      const used = new Set((obituaries || []).map((o: any) => o.case_uuid));
+const { data: usedRows } = await supabase
+  .from("obituaries")
+  .select("case_uuid")
+  .in("case_uuid", ids);
 
-      const latestIncomplete = cases?.find((c) => !used.has(c.id));
-      setIncomplete(latestIncomplete || null);
+const used = new Set((usedRows || []).map((o: any) => o.case_uuid));
 
-      // ✅ Latest completed
-      const { data: latestObituary } = await supabase
-        .from("obituaries")
-        .select("name_cn, name_ic, case_id, case_uuid, death_datetime")
-        .order("case_id", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+// 3️⃣ Find first unused
+const latestIncomplete = cases?.find((c) => !used.has(c.id));
+setIncomplete(latestIncomplete || null);
 
-      if (!latestObituary) {
-        setCompleted(null);
-        return;
-      }
+const { data: latestObituary } = await supabase
+  .from("obituaries")
+  .select("name_cn, name_ic, case_id, case_uuid, death_datetime")
+  .order("case_id", { ascending: false })
+  .limit(1)
+  .maybeSingle();
 
-      const { data: caseData } = await supabase
-        .from("cases")
-        .select("religion")
-        .eq("id", latestObituary.case_uuid)
-        .maybeSingle();
+if (!latestObituary) {
+  setCompleted(null);
 
-      setCompleted({
-        ...latestObituary,
-        religion: caseData?.religion || null,
-      });
+cachedHome.incomplete = latestIncomplete;
+cachedHome.completed = null;
+
+  return;
+}
+
+const { data: caseData } = await supabase
+  .from("cases")
+  .select("religion")
+  .eq("id", latestObituary.case_uuid)
+  .maybeSingle();
+
+setCompleted({
+  ...latestObituary,
+  religion: caseData?.religion || null,
+});
+
+
+cachedHome.incomplete = latestIncomplete;
+cachedHome.completed = {
+  ...latestObituary,
+  religion: caseData?.religion || null,
+};
+
     };
-
     fetchData();
   }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-50">

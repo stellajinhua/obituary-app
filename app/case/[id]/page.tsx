@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { cachedCase, cachedHome } from "@/lib/cache";
+
 
 export default function CasePage() {
   const router = useRouter();
@@ -16,8 +18,19 @@ export default function CasePage() {
 
   // ✅ FETCH
  useEffect(() => {
+  if (!caseUuid) return;
+
+  // 🚀 1. Check cache first
+  if (cachedCase[caseUuid]) {
+    setForm(cachedCase[caseUuid]);
+    setOriginalForm(cachedCase[caseUuid]);
+    return;
+  }
+
   const fetchCase = async () => {
-    let query = supabase.from("cases").select("*");
+    let query = supabase
+      .from("cases")
+      .select("id, case_id, gender, dialect, food, religion, burialtype");
 
     if (caseUuid.includes("-") && caseUuid.length > 20) {
       query = query.eq("id", caseUuid);
@@ -26,9 +39,6 @@ export default function CasePage() {
     }
 
     const { data, error } = await query.maybeSingle();
-
-    console.log("FETCH RESULT:", data);
-    console.log("LOOKING FOR:", caseUuid);
 
     if (error) {
       console.error("Fetch error:", error);
@@ -40,11 +50,15 @@ export default function CasePage() {
       return;
     }
 
+    // ✅ set state
     setForm(data);
     setOriginalForm(data);
+
+    // ✅ cache it
+    cachedCase[caseUuid] = data;
   };
 
-  if (caseUuid) fetchCase();
+  fetchCase();
 }, [caseUuid]);
 
   const map = {
@@ -77,9 +91,6 @@ export default function CasePage() {
     },
   };
 
-
-
-
   const formatField = (category: any, value: string) => {
     if (!value) return "-";
     const item = (map as any)[category]?.[value];
@@ -88,23 +99,34 @@ export default function CasePage() {
   };
 
   // ✅ SAVE
-  const handleUpdate = async () => {
-    const { error } = await supabase
-      .from("cases")
-      .update({
-        gender: form.gender,
-        dialect: form.dialect,
-        food: form.food,
-        religion: form.religion,
-        burialtype: form.burialtype,
-      })
-      .eq("id", caseUuid);
+const handleUpdate = async () => {
+  const { error } = await supabase
+    .from("cases")
+    .update({
+      gender: form.gender,
+      dialect: form.dialect,
+      food: form.food,
+      religion: form.religion,
+      burialtype: form.burialtype,
+    })
+    .eq("id", caseUuid);
 
-    if (!error) {
-      setIsEditing(false);
-      setOriginalForm(form);
+  if (!error) {
+    setIsEditing(false);
+    setOriginalForm(form);
+
+    // ✅ update case cache
+    cachedCase[caseUuid] = form;
+
+    // ✅ update homepage cache
+    if (cachedHome?.completed?.case_uuid === caseUuid) {
+      cachedHome.completed = {
+        ...cachedHome.completed,
+        ...form,
+      };
     }
-  };
+  }
+};
 
   // ✅ WHATSAPP (RESTORED)
   function formatWhatsAppMessage(form: any) {
@@ -129,7 +151,7 @@ Service Type: ${(map as any).service?.[form.burialtype]?.en || "-"}
   }
 
 
-if (!form) return <div className="p-6">Loading...</div>;
+if (!form) return null;
 
 const isChristian = form.religion === "Christian";
 const caseId = form.case_id;
@@ -310,11 +332,13 @@ const religion = (form.religion || "").toLowerCase().trim();
           Continue to Obituary
         </button>
 
-        <button
-          onClick={() => router.push("/")}
-          className="text-sm text-gray-700 underline"
-        >
-          ← Back
+       <button
+        onMouseEnter={() => router.prefetch("/")}
+        onTouchStart={() => router.prefetch("/")}
+        onClick={() => router.push("/")}
+        className="text-sm text-gray-700 underline"
+          >
+             ← Back
         </button>
 
       </div>

@@ -4,7 +4,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { pdf } from "@react-pdf/renderer";
 import ObituaryPDF from "@/components/ObituaryPDF";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import solarlunar from "solarlunar";
 import ChristianPDF from "./ChristianObituaryPDF";
 import { useRouter } from "next/navigation";
@@ -121,9 +121,7 @@ function buildObituaryData(form: any, case_id: string, case_uuid: string) {
 
 export default function ObituaryForm(props: any) {
     
-
   const { initialData } = props;
-  console.log("INITIAL DATA:", initialData);
 
   const router = useRouter();
 
@@ -187,16 +185,13 @@ useEffect(() => {
 
 // ✅ LIVE RELIGION REACTION (user changes dropdown)
 useEffect(() => {
-  if (!form) return;
-
   const religion = (form.religion || "").toLowerCase().trim();
 
-  if (religion === "christian") {
-    setForm((prev: any) => ({
-      ...prev,
-      zodiaclist: [], // 🔥 remove zodiac immediately
-    }));
-  } else {
+  if (religion === "christian" && form.zodiaclist?.length) {
+    setForm((prev: any) => ({ ...prev, zodiaclist: [] }));
+  }
+
+  if (religion !== "christian" && form.birth_year) {
     setForm((prev: any) => ({
       ...prev,
       birth_year: null,
@@ -204,7 +199,7 @@ useEffect(() => {
       memorial_service_time: null,
     }));
   }
-}, [form?.religion]);
+}, [form.religion]);
 
 const [previewUrl, setPreviewUrl] = useState("");
 const [previewData, setPreviewData] = useState<any>(null);
@@ -214,12 +209,12 @@ const previewRef = useRef<HTMLDivElement | null>(null);
 const handleImageChange = async (e: any) => {
   const file = e.target.files?.[0];
 
-  if (!file.type.startsWith("image/")) {
-  alert("Please upload an image");
+if (!file || !file.type.startsWith("image/")){
+  alert("please upload an image");
   return;
 }
    console.log("FILE:", file);
-  if (!file) return;
+
 
   // unique filename
   const fileName = `${props.caseId}-${Date.now()}.jpg`;
@@ -260,11 +255,8 @@ const zodiacs = [
 
 const { parlours = [] } = props;
 
-const isChristian = form?.religion === "Christian";
-
-
 const religion = (form.religion || "").toLowerCase().trim();
- console.log("FORM RELIGION:", form.religion);
+const isChristian = religion === "christian";
 
 const toLocalDateTime = (d: Date) => {
   const offset = d.getTimezoneOffset();
@@ -342,21 +334,21 @@ const buildFuneralFlow = (deathStr: string) => {
   };
 };
 
-const handleChange = (e: any) => {
+const handleChange = useCallback((e: any) => {
   const { name, value } = e.target;
 
   setForm((prev: any) => {
     let updated = { ...prev };
 
-    // 🔥 FIX: normalize death_datetime from date input
+    // normalize death_datetime
     if (name === "death_datetime") {
       updated[name] = value ? `${value}T00:00:00` : "";
     } else {
       updated[name] = value;
     }
 
-    // 👉 auto encoffin end (+1 hour)
-    if (name === "encoffin_start" && value) {
+    // auto encoffin end (+1 hour)
+    if (name === "encoffin_start" && value && value.includes(":")) {
       const [h, m] = value.split(":").map(Number);
       const base = new Date();
       base.setHours(h, m, 0);
@@ -367,21 +359,20 @@ const handleChange = (e: any) => {
       updated.encoffin_end = formatTime(end);
     }
 
-    // 👉 main trigger (death → everything)
+    // death → auto flow
     if (name === "death_datetime" && value) {
-      const deathValue = `${value}T00:00:00`; // 🔥 ensure correct format
-      const auto = buildFuneralFlow(deathValue);
+      const auto = buildFuneralFlow(updated[name]);
 
-Object.keys(auto).forEach((key) => {
-  const k = key as keyof typeof auto;
+      Object.keys(auto).forEach((key) => {
+        const k = key as keyof typeof auto;
 
-  if ((updated as any)[k] == null || (updated as any)[k] === "") {
-    (updated as any)[k] = auto[k];
-  }
-});
+        if ((updated as any)[k] == null || (updated as any)[k] === "") {
+          (updated as any)[k] = auto[k];
+        }
+      });
     }
 
-    // 👉 update funeral manually
+    // manual funeral update
     if (name === "funeral_datetime" && value) {
       updated.funeral_lunar_date = formatLunar(value);
       updated.funeral_lunar_day = formatWeekday(value);
@@ -393,7 +384,7 @@ Object.keys(auto).forEach((key) => {
 
     return updated;
   });
-};
+}, []);
 
 const [submitted, setSubmitted] = useState(false);
 
@@ -509,46 +500,36 @@ const handleSubmit = async () => {
   setSubmitted(true);
 
   try {
-    // ✅ 1. Ensure case_id
-    let case_id = form.case_id;
+    // 1. Get case_id
+    const casePromise = form.case_id
+      ? Promise.resolve({ case_id: form.case_id })
+      : supabase
+          .from("cases")
+          .select("case_id")
+          .eq("id", props.caseId)
+          .maybeSingle();
 
-    if (!case_id) {
-      const { data } = await supabase
-        .from("cases")
-        .select("case_id")
-        .eq("id", props.caseId)
-        .maybeSingle()
+    const result = await casePromise;
+    const case_id = result?.case_id;
 
-      case_id = data?.case_id;
-    }
+    // 2. Save
+    const dataToSave = transformCaseData(form, case_id, props.caseId);
 
-    // ✅ 2. Transform ONLY (no extra logic here)
-   const dataToSave = transformCaseData(form, case_id, props.caseId);
-
-console.log("FINAL data:", dataToSave);
-
-    // ✅ 3. Save
     const { error } = await supabase
       .from("obituaries")
       .upsert(dataToSave, { onConflict: "case_uuid" });
 
     if (error) throw error;
 
+    // 3. Build preview
+    const builtPreviewData = buildObituaryData(form, case_id, props.caseId);
 
-    // ✅ 4. Build preview
-const builtPreviewData = buildObituaryData(form, case_id, props.caseId);
-
-    // ✅ 5. Venue enrichment (UI only)
+    // 4. Venue enrichment
     if (form.venue_type === "parlour") {
       const id = form.venue_location_id;
 
       if (id) {
-        const { data: p } = await supabase
-          .from("locations")
-          .select("name_en, name_cn")
-          .eq("id", id)
-          .maybeSingle()
-
+        const p = parlours.find((x: any) => x.id === id);
         builtPreviewData.venue_en = p?.name_en || "";
         builtPreviewData.venue_cn = p?.name_cn || "";
       } else {
@@ -556,7 +537,8 @@ const builtPreviewData = buildObituaryData(form, case_id, props.caseId);
         builtPreviewData.venue_cn = form.custom_venue_cn || "";
       }
 
-      builtPreviewData.venue_full = `${builtPreviewData.venue_cn} ${builtPreviewData.venue_en}`.trim();
+      builtPreviewData.venue_full =
+        `${builtPreviewData.venue_cn} ${builtPreviewData.venue_en}`.trim();
     }
 
     if (form.venue_type === "home") {
@@ -564,44 +546,38 @@ const builtPreviewData = buildObituaryData(form, case_id, props.caseId);
       builtPreviewData.venue_cn = form.venue_full || "";
     }
 
-    // ✅ 6. Generate PDF
+    // 5. Generate PDF (non-blocking feel)
+    setTimeout(async () => {
+      try {
+        const Component = getTemplate(builtPreviewData);
+        const element = <Component data={builtPreviewData} />;
 
-     
-const Component = getTemplate(builtPreviewData);
+        const blob = await pdf(element).toBlob();
+        const url = URL.createObjectURL(blob);
 
-const element = <Component data={builtPreviewData} />;
-const blob = await pdf(element).toBlob();
-    const url = URL.createObjectURL(blob);
+        setPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return url;
+        });
 
-    setPreviewUrl(url);
-    setPreviewData(builtPreviewData);
+        setPreviewData(builtPreviewData);
 
-setTimeout(() => {
-  previewRef.current?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+        previewRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
 
-  // 👇 offset adjustment (move slightly up)
-  setTimeout(() => {
-    window.scrollBy({ top: -20, behavior: "smooth" });
-  }, 300);
-
-}, 100);
-
+      } catch (err) {
+        console.error("PDF error:", err);
+      } finally {
+        setSubmitted(false);
+      }
+    }, 50);
 
   } catch (err: any) {
-  console.error("Submit error FULL:", err);
-
-  if (err) {
-    console.error("Message:", err.message);
-    console.error("Details:", err.details);
-    console.error("Hint:", err.hint);
-    console.error("Code:", err.code);
+    console.error("Submit error:", err);
+    setSubmitted(false);
   }
-}
-
-  setSubmitted(false);
 };
 
   return (
@@ -888,7 +864,8 @@ setTimeout(() => {
 </Section>
 
 
-{form.religion !== "Christian" && (
+
+{!isChristian && (
   <Section title="Contradictory Zodiac">
 
     {(form.zodiaclist || []).map((z: any, index: number) => (
@@ -1053,10 +1030,10 @@ setTimeout(() => {
             onClick={handleSubmit} 
             disabled={submitted} 
             className={`w-full py-4 rounded-xl text-lg text-white ${
-              submitted ? "bg-gray-400 animate-pulse" : "bg-black"
+              submitted ? "bg-gray-400" : "bg-black"
             }`}
           >
-            {submitted ? "Saving..." : "Save & Preview"}
+            {submitted ? "Generating PDF..." : "Save & Preview"}
           </button>
 
           <button
@@ -1095,7 +1072,6 @@ setTimeout(() => {
 
   );
 }
-
 
 function Section({ title, children }: any) {
   return (
