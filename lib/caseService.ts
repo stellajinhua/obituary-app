@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 
-// ✅ helper: safe local date (NO timezone shift)
+// =========================
+// Helpers
+// =========================
 function parseDate(dateStr: string) {
   if (!dateStr) return null;
 
@@ -17,7 +19,7 @@ function parseDate(dateStr: string) {
 // =========================
 function getNextPrayer(prayers: any[]) {
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // ✅ normalize
+  today.setHours(0, 0, 0, 0);
 
   return (
     prayers
@@ -34,30 +36,42 @@ function getNextPrayer(prayers: any[]) {
 }
 
 // =========================
-// MAIN SERVICE
+// MAIN SERVICE (FIXED)
 // =========================
 export async function getCasesWithNextPrayer() {
-  const { data: cases } = await supabase.from("cases").select("*");
-  const { data: obituaries } = await supabase.from("obituaries").select("*");
-  const { data: prayers } = await supabase.from("prayer_schedules").select("*");
+  const [
+    { data: cases },
+    { data: obituaries },
+    { data: prayers },
+  ] = await Promise.all([
+    supabase.from("cases").select("*"),
+    supabase.from("obituaries").select("*"),
+    supabase.from("prayer_schedules").select("*"),
+  ]);
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // ✅ normalize
+  today.setHours(0, 0, 0, 0);
+
+  // ✅ build lookup maps (FAST)
+  const obituaryMap = new Map();
+  obituaries?.forEach((o: any) => {
+    obituaryMap.set(o.case_uuid, o);
+  });
+
+  const prayerMap = new Map();
+  prayers?.forEach((p: any) => {
+    const key = p.case_uuid || p.case_id;
+
+    if (!prayerMap.has(key)) {
+      prayerMap.set(key, []);
+    }
+
+    prayerMap.get(key).push(p);
+  });
 
   return (cases || []).map((c: any) => {
-    // ✅ match obituary safely
-    const ob = obituaries?.find(
-      (o: any) => o.case_uuid === c.id
-    );
-
-    // ✅ match prayers safely
-    const related =
-      prayers?.filter((p: any) => {
-        return (
-          p.case_uuid === c.id ||
-          p.case_id === c.id
-        );
-      }) || [];
+    const ob = obituaryMap.get(c.id) || null;
+    const related = prayerMap.get(c.id) || [];
 
     const next = getNextPrayer(related);
 
@@ -84,7 +98,6 @@ export async function getCasesWithNextPrayer() {
       next_prayer_date: next?.western_date || null,
       next_prayer_type: next?.prayer_type || null,
 
-      // ✅ lunar data (FIXED)
       lunar_month: next?.lunar_month || null,
       lunar_day: next?.lunar_day || null,
       lunar_day_name: next?.lunar_day_name || null,
