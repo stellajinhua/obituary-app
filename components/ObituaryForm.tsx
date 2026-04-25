@@ -508,9 +508,19 @@ const handleSubmit = async () => {
           .select("case_id")
           .eq("id", props.caseId)
           .maybeSingle();
+let case_id = form.case_id;
 
-    const result = await casePromise;
-    const case_id = result?.case_id;
+if (!case_id) {
+  const { data, error } = await supabase
+    .from("cases")
+    .select("case_id")
+    .eq("id", props.caseId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  case_id = data?.case_id;
+}
 
     // 2. Save
     const dataToSave = transformCaseData(form, case_id, props.caseId);
