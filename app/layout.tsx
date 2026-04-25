@@ -13,39 +13,57 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jinhua Obituary",
+  title: "Jinhua",
   description: "Honor • Remember • Celebrate",
 
-  // ✅ PWA / Theme
+  // ✅ Theme
   themeColor: "#000000",
 
-  // ✅ iOS support (Step 4)
+  // ✅ PWA manifest
+  manifest: "/manifest.json",
+
+  // ✅ iOS app settings
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Jinhua",
   },
 
-  // ✅ App icons
+  // ✅ Icons (important)
   icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
   },
 
-  // ✅ Manifest (Step 3)
-  manifest: "/manifest.json",
+  // ✅ Prevent search indexing (optional, since you asked earlier)
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* 🔥 CRITICAL FIX FOR IOS */}
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+      </head>
+
       <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
         {children}
       </body>
