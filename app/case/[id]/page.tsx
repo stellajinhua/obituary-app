@@ -11,8 +11,8 @@ export default function CasePage() {
 
   const caseUuid = params.id as string;
 
-  const [form, setForm] = useState<any>(null);
-  const [originalForm, setOriginalForm] = useState<any>(null);
+  const [form, setForm] = useState<any>(() => cachedCase[caseUuid] || null);
+  const [originalForm, setOriginalForm] = useState<any>(() => cachedCase[caseUuid] || null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
