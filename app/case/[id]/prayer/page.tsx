@@ -364,6 +364,7 @@ export default function PrayerPage() {
             <option value="">Select Relationship</option>
             <option value="Son">Son 儿子</option>
             <option value="Daughter">Daughter 女儿</option>
+            <option value="Sister">Sister 姐姐</option>
           </select>
         </div>
 
