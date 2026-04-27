@@ -7,6 +7,14 @@ import solarlunar from "solarlunar";
 import { formatDateWithDay } from "@/lib/date";
 import { PRAYER_LABELS } from "@/lib/prayer";
 
+const RELATIONSHIP_CN: Record<string, string> = {
+  Son: "儿子",
+  Daughter: "女儿",
+  ElderSister: "姐姐",
+  YoungerSister: "妹妹",
+};
+
+
 // =========================
 // SAFE DATE (FIXES TIMEZONE)
 // =========================
@@ -265,8 +273,10 @@ function Card({ c }: any) {
         <span className="font-semibold text-gray-800">
           Contact:
         </span>{" "}
-        {c.contact_name}
-        <span className="text-gray-500"> ({c.relationship})</span>{" "}
+        {c.contact_name}{" "}
+        <span className="text-gray-500">
+  ({RELATIONSHIP_CN[c.relationship] || c.relationship})
+</span>{" "}
         <span className="font-medium">
           {c.contact_phone}
         </span>

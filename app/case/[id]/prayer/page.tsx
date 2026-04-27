@@ -7,6 +7,14 @@ import { generatePrayerData, PRAYER_LABELS } from "@/lib/prayer";
 import solarlunar from "solarlunar";
 import { formatDate } from "@/lib/date";
 
+const RELATIONSHIP_LABELS: Record<string, string> = {
+  Son: "Son 儿子",
+  Daughter: "Daughter 女儿",
+  ElderSister: "Elder Sister 姐姐",
+  YoungerSister: "Younger Sister 妹妹",
+};
+
+
 const PRAYER_ORDER = ["1st", "3rd", "5th", "7th", "100th"];
 
 export default function PrayerPage() {
@@ -355,7 +363,7 @@ export default function PrayerPage() {
           />
 
           <select
-            value={contact.relationship}
+            value={contact.relationship || ""}
             onChange={(e) =>
               setContact({ ...contact, relationship: e.target.value })
             }
@@ -364,7 +372,8 @@ export default function PrayerPage() {
             <option value="">Select Relationship</option>
             <option value="Son">Son 儿子</option>
             <option value="Daughter">Daughter 女儿</option>
-            <option value="Sister">Sister 姐姐</option>
+            <option value="ElderSister">Elder Sister 姐姐</option>
+            <option value="YoungerSister">Younger Sister 妹妹</option>
           </select>
         </div>
 
