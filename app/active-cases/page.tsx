@@ -5,6 +5,7 @@ import { getCasesWithNextPrayer } from "@/lib/caseService";
 import { useRouter } from "next/navigation";
 import solarlunar from "solarlunar";
 import { formatDateWithDay } from "@/lib/date";
+import { PRAYER_LABELS } from "@/lib/prayer";
 
 // =========================
 // SAFE DATE (FIXES TIMEZONE)
@@ -186,6 +187,7 @@ function Card({ c }: any) {
       {(() => {
         const milestone = getMilestone(c.day_count);
         const next = getNextMilestone(c.day_count);
+        const prayer = c.prayer;
 
         if (milestone) {
           return (
@@ -212,43 +214,45 @@ function Card({ c }: any) {
               </span>
             </div>
 
-            {next && (() => {
-              const nextDate = getNextMilestoneDate(
-                c.death_datetime,
-                next.day
-              );
+            {prayer && (() => {
+  const date = parseDate(prayer.western_date);
+  if (!date) return null;
 
-              if (!nextDate) return null;
+  const { western, lunar } = formatFullDate(date);
 
-              const { western, lunar } =
-                formatFullDate(nextDate);
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
-              return (
-                <div className="bg-gray-50 border rounded-xl p-3 space-y-1">
+  const diffDays = Math.ceil(
+    (date.getTime() - today.getTime()) / (1000*60*60*24)
+  );
 
-                  <div className="text-xs text-gray-500 font-semibold">
-                    NEXT
-                  </div>
+  return (
+    <div className="bg-gray-50 border rounded-xl p-3 space-y-1">
 
-                  <div className="text-lg font-bold text-gray-900">
-                    {next.label}
-                  </div>
+      <div className="text-xs text-gray-500 font-semibold">
+        {diffDays === 0 ? "TODAY" : "UPCOMING"}
+      </div>
 
-                  <div className="text-sm text-gray-500">
-                    in {next.day - c.day_count} days
-                  </div>
+      <div className="text-lg font-bold text-gray-900">
+        {PRAYER_LABELS[prayer.prayer_type] || prayer.prayer_type}
+      </div>
 
-                  <div className="text-sm text-gray-600">
-                    {western}
-                  </div>
+      <div className="text-sm text-gray-500">
+        {diffDays === 0 ? "Today" : `in ${diffDays} days`}
+      </div>
 
-                  <div className="text-sm text-gray-700">
-                    {lunar}
-                  </div>
+      <div className="text-sm text-gray-600">
+        {western}
+      </div>
 
-                </div>
-              );
-            })()}
+      <div className="text-sm text-gray-700">
+        {lunar}
+      </div>
+
+    </div>
+  );
+})()}
           </div>
         );
       })()}

@@ -98,6 +98,13 @@ export async function getCasesWithNextPrayer() {
       next_prayer_date: next?.western_date || null,
       next_prayer_type: next?.prayer_type || null,
 
+      prayer: next
+  ? {
+      prayer_type: next.prayer_type,
+      western_date: next.western_date,
+    }
+  : null,
+
       lunar_month: next?.lunar_month || null,
       lunar_day: next?.lunar_day || null,
       lunar_day_name: next?.lunar_day_name || null,
