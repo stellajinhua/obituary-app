@@ -194,7 +194,32 @@ function splitVenue(text = "") {
   };
 }
 
+function formatAgeCN(age?: number | string) {
+  if (age === null || age === undefined || age === "") return "";
 
+  const n = Number(age);
+  if (isNaN(n)) return "";
+
+  const ageCN = numberToChinese(n);
+
+  // Below 60
+  if (n < 60) {
+    return `享年${ageCN}歲`;
+  }
+
+  // 60 and above
+  const tens = Math.floor(n / 10) * 10;
+  const ones = n % 10;
+
+  const tensCN = numberToChinese(tens);
+  const onesCN = numberToChinese(ones);
+
+  if (ones === 0) {
+    return `享壽積閏${tensCN}歲`;
+  }
+
+  return `享壽積閏${tensCN}有${onesCN}歲`;
+}
 
 /* ------------------ DATE FORMAT ------------------ */
 function formatDateEN(dateString?: string) {
@@ -512,7 +537,7 @@ return (
 
           <View style={styles.ageRow}>
             <View style={styles.line} />
-            <Text style={styles.age}>享年 {record.age || ""} 岁</Text>
+            <Text style={styles.age}>{formatAgeCN(record.age)}</Text>
             <View style={styles.line} />
           </View>
 
