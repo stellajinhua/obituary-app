@@ -118,6 +118,7 @@ export default function PrayerPage() {
               type: db.prayer_type,
               label: PRAYER_LABELS[db.prayer_type] || db.prayer_type,
               isManual: db.is_manual || false,
+              remark: db.remark || "",
             };
           }
 
@@ -125,6 +126,7 @@ export default function PrayerPage() {
             ...g,
             label: PRAYER_LABELS[g.type] || g.type,
             isManual: false,
+            remark: "",
           };
         });
 
@@ -197,6 +199,7 @@ export default function PrayerPage() {
       ...freshItem,
       label: PRAYER_LABELS[targetType] || targetType,
       isManual: false,
+      remark: updated[index].remark || "",
     };
 
     setPrayers(updated);
@@ -233,6 +236,7 @@ export default function PrayerPage() {
           lunar_day_name: p.lunar_day_name,
           reminder_date: p.reminder_date,
           is_manual: p.isManual || false,
+          remark: p.remark || "",
         }));
 
       const deletePromise =
@@ -415,6 +419,17 @@ export default function PrayerPage() {
                       <span className="text-green-600">Auto</span>
                     )}
                   </div>
+
+                  <textarea
+  placeholder="Remark (optional)"
+  value={p.remark || ""}
+  onChange={(e) => {
+    const updated = [...prayers];
+    updated[index].remark = e.target.value;
+    setPrayers(updated);
+  }}
+  className="border px-3 py-2 rounded-lg w-full text-sm"
+/>
 
                 </div>
               </label>
