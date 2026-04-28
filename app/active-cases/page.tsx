@@ -237,6 +237,7 @@ function Card({ c }: any) {
 
   return (
     <div className="bg-gray-50 border rounded-xl p-3 space-y-1">
+   
 
       <div className="text-xs text-gray-500 font-semibold">
         {diffDays === 0 ? "TODAY" : "UPCOMING"}
@@ -257,7 +258,11 @@ function Card({ c }: any) {
       <div className="text-sm text-gray-700">
         {lunar}
       </div>
-
+   {prayer.remark && (
+  <div className="text-sm text-gray-700 mt-2 whitespace-pre-line">
+    📝 {prayer.remark}
+  </div>
+)}
     </div>
   );
 })()}

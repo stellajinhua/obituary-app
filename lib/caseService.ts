@@ -102,6 +102,7 @@ export async function getCasesWithNextPrayer() {
   ? {
       prayer_type: next.prayer_type,
       western_date: next.western_date,
+      remark: next.remark || "",
     }
   : null,
 

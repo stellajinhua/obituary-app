@@ -197,6 +197,12 @@ function Card({ c, variant }: any) {
         </div>
 
         {/* Divider */}
+
+        {c.remark && (
+  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-sm text-gray-800 whitespace-pre-line">
+    📝 {c.remark}
+  </div>
+)}
         <div className="border-t pt-3" />
 
         {/* Contact */}
