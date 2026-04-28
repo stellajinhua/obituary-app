@@ -86,22 +86,13 @@ cachedHome.completed = {
   return (
     <div className="min-h-screen bg-gray-50">
 
-
-
       {/* 🔝 Header */}
-
-
-
-
-
 
       <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
         <h1 className="text-lg font-semibold text-gray-900">
           Funeral Control Center
         </h1>
       </div>
-
-
 
       <div className="flex justify-end p-4">
   <button
