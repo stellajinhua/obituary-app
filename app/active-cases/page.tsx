@@ -175,8 +175,12 @@ export default function ActiveCasesPage() {
 // Card
 // =========================
 function Card({ c }: any) {
+  const router = useRouter();
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3">
+    <div
+  onClick={() => router.push(`/case/${c.id}`)}
+  className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3 cursor-pointer"
+>
 
       {/* Name */}
       <div className="text-base font-semibold text-gray-900 leading-snug">

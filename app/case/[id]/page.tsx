@@ -15,42 +15,54 @@ export default function CasePage() {
   const [originalForm, setOriginalForm] = useState<any>(() => cachedCase[caseUuid] || null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasObituary, setHasObituary] = useState(false);
+  const [hasPrayer, setHasPrayer] = useState(false);
 
   // ✅ FETCH (optimized + cached)
-  useEffect(() => {
-    if (!caseUuid) return;
+ useEffect(() => {
+  if (!caseUuid) return;
+console.log(caseUuid)
+  const fetchAll = async () => {
+    // 1️⃣ CASE (keep your cache logic)
+    let caseData = cachedCase[caseUuid];
 
-    if (cachedCase[caseUuid]) {
-      setForm(cachedCase[caseUuid]);
-      setOriginalForm(cachedCase[caseUuid]);
-      return;
-    }
-
-    const fetchCase = async () => {
-      const { data, error } = await supabase
+    if (!caseData) {
+      const { data } = await supabase
         .from("cases")
         .select("id, case_id, gender, dialect, food, religion, burialtype")
         .eq("id", caseUuid)
         .maybeSingle();
 
-      if (error) {
-        console.error("Fetch error:", error);
-        return;
-      }
+      if (!data) return;
 
-      if (!data) {
-        console.error("No case found:", caseUuid);
-        return;
-      }
-
-      setForm(data);
-      setOriginalForm(data);
-
+      caseData = data;
       cachedCase[caseUuid] = data;
-    };
+    }
 
-    fetchCase();
-  }, [caseUuid]);
+    setForm(caseData);
+    setOriginalForm(caseData);
+
+    // 🔥 2️⃣ OBITUARY CHECK
+    const { data: ob } = await supabase
+      .from("obituaries")
+      .select("*")
+      .eq("case_uuid", caseUuid)
+      .maybeSingle();
+
+    setHasObituary(!!ob);
+
+    // 🔥 3️⃣ PRAYER CHECK
+    const { data: pr } = await supabase
+      .from("prayer_schedules")
+      .select("*")
+      .eq("case_uuid", caseUuid)
+      .limit(1);
+
+    setHasPrayer((pr || []).length > 0);
+  };
+
+  fetchAll();
+}, [caseUuid]);
 
   // ✅ FIELD MAP
   const map = {
@@ -293,7 +305,7 @@ Service Type: ${(map as any).service?.[form.burialtype]?.en || "-"}
         </button>
 
         {/* 🚀 INSTANT NAVIGATION */}
-        <button
+<button
   onMouseEnter={() => router.prefetch(`/case/${caseUuid}/edit`)}
   onTouchStart={() => router.prefetch(`/case/${caseUuid}/edit`)}
   onClick={() => {
@@ -302,7 +314,15 @@ Service Type: ${(map as any).service?.[form.burialtype]?.en || "-"}
   }}
   className="bg-black text-white px-4 py-2 rounded"
 >
-  Continue to Obituary
+  {hasObituary ? "Edit Obituary" : "Create Obituary"}
+</button>
+
+<button
+  onClick={() => router.push(`/case/${caseUuid}/prayer`)}
+  disabled={!hasObituary}
+  className="bg-purple-600 text-white px-4 py-2 rounded disabled:opacity-50"
+>
+  {hasPrayer ? "Edit Prayer Schedule" : "Create Prayer Schedule"}
 </button>
 
         <button

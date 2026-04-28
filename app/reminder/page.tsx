@@ -158,13 +158,15 @@ function Section({ title, data, variant }: any) {
 // Card (MOBILE OPTIMIZED)
 // =========================
 function Card({ c, variant }: any) {
+  const router = useRouter();
   return (
     <div
-      className={`
-        rounded-2xl p-5 bg-white shadow-sm
-        ${variant === "today" ? "bg-red-50 border border-red-200" : "border border-gray-100"}
-      `}
-    >
+  onClick={() => router.push(`/case/${c.id}`)}
+  className={`
+    rounded-2xl p-5 bg-white shadow-sm cursor-pointer
+    ${variant === "today" ? "bg-red-50 border border-red-200" : "border border-gray-100"}
+  `}
+>
       <div className="space-y-4">
 
         {/* Name */}
