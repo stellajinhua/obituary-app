@@ -221,6 +221,13 @@ cachedHome.completed = {
       Active Cases (100 Days)
     </button>
 
+    <button
+  onClick={() => router.push("/cases")}
+  className="w-full border py-4 rounded-xl text-base font-medium"
+>
+  View All Cases
+</button>
+
   </Card>
 
 </div>
