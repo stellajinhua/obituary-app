@@ -86,12 +86,35 @@ cachedHome.completed = {
   return (
     <div className="min-h-screen bg-gray-50">
 
+
+
       {/* 🔝 Header */}
+
+
+
+
+
+
       <div className="sticky top-0 z-10 bg-white border-b px-4 py-4">
         <h1 className="text-lg font-semibold text-gray-900">
           Funeral Control Center
         </h1>
       </div>
+
+
+
+      <div className="flex justify-end p-4">
+  <button
+    onClick={async () => {
+      await fetch("/api/logout", { method: "POST" })
+      window.location.href = "/login"
+    }}
+    className="bg-gray-100 px-3 py-1 rounded-md text-sm hover:bg-gray-200"
+  >
+    Logout
+  </button>
+</div>
+
 
       {/* Content */}
       <div className="px-4 py-6 space-y-8">
@@ -227,7 +250,6 @@ cachedHome.completed = {
 >
   View All Cases
 </button>
-
   </Card>
 
 </div>

@@ -19,10 +19,10 @@ export async function GET() {
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
     });
-  } catch (err) {
-    console.error("Unexpected error:", err);
-    return new Response(JSON.stringify({ error: "Server error" }), {
-      status: 500,
-    });
-  }
+  } catch (err: any) {
+  console.error("Unexpected error:", err);
+  return new Response(JSON.stringify({ error: err.message }), {
+    status: 500,
+  });
+}
 }
