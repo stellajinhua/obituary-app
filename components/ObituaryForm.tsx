@@ -12,7 +12,36 @@ import { useEffect } from "react";
 import { useRef } from "react";
 
 
+const formatWeekday = (dateStr: string) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const days = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
+  return days[d.getDay()];
+};
+
+const formatLunar = (dateStr: string) => {
+  if (!dateStr) return "";
+
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+
+    const lunar = solarlunar.solar2lunar(
+      d.getFullYear(),
+      d.getMonth() + 1,
+      d.getDate()
+    );
+
+    return `農曆${lunar.gzYear}年${lunar.monthCn}${lunar.dayCn}日`;
+  } catch {
+    return "";
+  }
+};
+
+
+
 function getTemplate(data: any) {
+  
   const religion = (data.religion || "").toLowerCase().trim();
 
   if (religion === "christian") return ChristianPDF;
@@ -46,10 +75,10 @@ function transformCaseData(form: any, case_id: string, case_uuid: string) {
     family_time: form.family_time || null,
 
     // ✅ lunar
-    death_lunar_date: form.death_lunar_date || null,
-    death_lunar_day: form.death_lunar_day || null,
-    funeral_lunar_date: form.funeral_lunar_date || null,
-    funeral_lunar_day: form.funeral_lunar_day || null,
+    death_lunar_date: formatLunar(form.death_datetime),
+    death_lunar_day: formatWeekday(form.death_datetime),
+    funeral_lunar_date: formatLunar(form.funeral_datetime),
+    funeral_lunar_day: formatWeekday(form.funeral_datetime),
 
     // ✅ venue
     venue_location_id:
@@ -258,6 +287,12 @@ const { parlours = [] } = props;
 const religion = (form.religion || "").toLowerCase().trim();
 const isChristian = religion === "christian";
 
+
+
+
+const deathLunarDate = formatLunar(form.death_datetime);
+const deathLunarDay = formatWeekday(form.death_datetime);
+
 const toLocalDateTime = (d: Date) => {
   const offset = d.getTimezoneOffset();
   const local = new Date(d.getTime() - offset * 60000);
@@ -278,32 +313,8 @@ const formatTime = (d: Date) => {
   });
 };
 
-const formatWeekday = (dateStr: string) => {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  const days = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
-  return days[d.getDay()];
-};
-
-const formatLunar = (dateStr: string) => {
-  if (!dateStr) return "";
-
-  try {
-    const d = new Date(dateStr);
-
-    if (isNaN(d.getTime())) return "";
-
-    const lunar = solarlunar.solar2lunar(
-      d.getFullYear(),
-      d.getMonth() + 1,
-      d.getDate()
-    );
-
-    return `農曆${lunar.gzYear}年${lunar.monthCn}${lunar.dayCn}日`;
-  } catch {
-    return "";
-  }
-};
+const funeralLunarDate = formatLunar(form.funeral_datetime);
+const funeralLunarDay = formatWeekday(form.funeral_datetime);
 
 const buildFuneralFlow = (deathStr: string) => {
   if (!deathStr) return {};
@@ -359,28 +370,11 @@ const handleChange = useCallback((e: any) => {
       updated.encoffin_end = formatTime(end);
     }
 
-    // death → auto flow
-    if (name === "death_datetime" && value) {
-      const auto = buildFuneralFlow(updated[name]);
-
-      Object.keys(auto).forEach((key) => {
-        const k = key as keyof typeof auto;
-
-        if ((updated as any)[k] == null || (updated as any)[k] === "") {
-          (updated as any)[k] = auto[k];
-        }
-      });
-    }
-
-    // manual funeral update
-    if (name === "funeral_datetime" && value) {
-      updated.funeral_lunar_date = formatLunar(value);
-      updated.funeral_lunar_day = formatWeekday(value);
-
-      const funeral = new Date(value);
-      updated.family_date = toLocalDate(funeral);
-      updated.family_time = formatTime(funeral);
-    }
+if (name === "funeral_datetime" && value) {
+  const funeral = new Date(value);
+  updated.family_date = toLocalDate(funeral);
+  updated.family_time = formatTime(funeral);
+}
 
     return updated;
   });
@@ -695,11 +689,11 @@ if (!case_id) {
   />
 
   <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
-    {form.death_lunar_date}
+    {deathLunarDate}
   </div>
 
   <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
-    {form.death_lunar_day}
+    {deathLunarDay}
   </div>
 
 </Section>
@@ -714,10 +708,10 @@ if (!case_id) {
 } onChange={handleChange} className={dateClass}
    style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }} />
           <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
-            {form.funeral_lunar_date}
+            {funeralLunarDate}
           </div>
           <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
-            {form.funeral_lunar_day}
+            {funeralLunarDay}
           </div> 
         </Section>
 
