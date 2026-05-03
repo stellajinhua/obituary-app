@@ -399,7 +399,7 @@ const RowCNEN = ({
         <Text
           style={[
   styles.valueCn,
-  ...(isVenue ? [{ fontSize: 11 }] : []),
+  ...(isVenue ? [{ fontSize: 13 }] : []),
 ]}
         >
           {valueCn}
