@@ -555,7 +555,7 @@ return (
   )}
   valueEn={
     record.death_datetime
-      ? formatDeathEN(record.death_datetime)
+      ? formatDateEN(record.death_datetime)
       : "—"
   }
 />
