@@ -27,7 +27,8 @@ Font.register({
 function formatDateCNEN(date?: string) {
   if (!date) return "-";
 
-  const d = new Date(date + "T00:00:00");
+  const d = new Date(date);
+
   if (isNaN(d.getTime())) return "-";
 
   const year = d.getFullYear();
@@ -362,10 +363,10 @@ const photoSrc =
 
   const deathStr = formatDateCNEN(record.death_datetime);
 
-const [deathCn, deathEn] =
-  typeof deathStr === "string"
-    ? deathStr.split("\n")
-    : ["-", ""];
+const deathCn = formatDateCNFull(record.death_datetime);
+const deathEn = formatDateEN(record.death_datetime);
+
+    console.log("death_datetime", record.death_datetime);
 
   const funeralDt = formatDateTimeCNEN(record.funeral_datetime);
 

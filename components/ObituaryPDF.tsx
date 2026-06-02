@@ -549,13 +549,17 @@ return (
 <RowCNEN
   labelCn="往生日期"
   labelEn="Date of Passing"
-  valueCn={formatLunarCN(
-  record.death_lunar_date,
-  record.death_lunar_day
-)}
+  valueCn={
+    record.death_datetime
+      ? `${formatLunarCN(
+          record.death_lunar_date,
+          record.death_lunar_day
+        )} ${formatTimeOnlyCN(record.death_datetime)}`
+      : "-"
+  }
   valueEn={
     record.death_datetime
-      ? formatDeathEN(record.death_datetime)
+      ? formatDateEN(record.death_datetime)
       : "—"
   }
 />

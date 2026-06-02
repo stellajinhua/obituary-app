@@ -36,8 +36,16 @@ function transformCaseData(form: any, case_id: string, case_uuid: string) {
    // food: form.food || null,
     burialtype: form.burialtype || null,
 
-    // ✅ dates
-    death_datetime: form.death_datetime || null,
+// ✅ dates
+death_datetime:
+  form.death_date
+    ? (
+        form.death_time
+          ? `${form.death_date}T${form.death_time}:00`
+          : `${form.death_date}T00:00:00`
+      )
+    : null,
+
     funeral_datetime: form.funeral_datetime || null,
     encoffin_date: form.encoffin_date || null,
     encoffin_start: form.encoffin_start || null,
@@ -127,6 +135,8 @@ export default function ObituaryForm(props: any) {
 
   const [form, setForm] = useState<any>({
     // defaults
+    death_date: "",
+    death_time: "",
     burial_place_select: "",
     burial_place_custom: "",
     zodiaclist: [{ zodiac: "", ages: [""] }],
@@ -148,6 +158,20 @@ useEffect(() => {
       ...(initialData || {}),
       religion: initialData?.religion || props.religion, // ✅ FIXED
     };
+
+// 🔥 reconstruct death date + time
+if (initialData?.death_datetime) {
+  const value = String(initialData.death_datetime);
+  updated.death_date = value.slice(0, 10);
+
+  console.log("initialData.death_datetime", initialData.death_datetime);
+
+  const timePart = value.slice(11, 16);
+
+  if (timePart !== "00:00") {
+    updated.death_time = timePart;
+  }
+}
 
     // ✅ Christian cleanup on load
     if ((updated.religion || "").toLowerCase().trim() === "christian") {
@@ -359,14 +383,13 @@ const handleChange = useCallback((e: any) => {
       updated.encoffin_end = formatTime(end);
     }
 
-    // death → auto flow
-    if (name === "death_datetime" && value) {
-      const auto = buildFuneralFlow(updated[name]);
+// death → auto flow
+if (name === "death_date" && value) {
+  const auto = buildFuneralFlow(value);
 
-      updated.death_lunar_date = auto.death_lunar_date;
-      updated.death_lunar_day = auto.death_lunar_day;
-      
-    }
+  updated.death_lunar_date = auto.death_lunar_date;
+  updated.death_lunar_day = auto.death_lunar_day;
+}
 
     // manual funeral update
     if (name === "funeral_datetime" && value) {
@@ -520,6 +543,19 @@ if (!case_id) {
 
     // 2. Save
     const dataToSave = transformCaseData(form, case_id, props.caseId);
+
+    console.log("death_date", form.death_date);
+console.log("death_time", form.death_time);
+console.log(
+  "saving death_datetime",
+  form.death_date
+    ? (
+        form.death_time
+          ? `${form.death_date}T${form.death_time}:00`
+          : `${form.death_date}T00:00:00`
+      )
+    : null
+);
 
     const { error } = await supabase
       .from("obituaries")
@@ -680,14 +716,20 @@ if (!case_id) {
 
   <input
     type="date"
-    name="death_datetime"
-    value={
-  form?.death_datetime
-    ? form.death_datetime.slice(0, 10)
-    : ""}
+    name="death_date"
+    value={form.death_date || ""}
     onChange={handleChange}
     className={dateClass}
-   style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
+    style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
+  />
+
+  <input
+    type="time"
+    name="death_time"
+    value={form.death_time || ""}
+    onChange={handleChange}
+    className={dateClass}
+    style={{ WebkitAppearance: "none", width: "100%", minWidth: 0 }}
   />
 
   <div className="px-3 py-2 bg-gray-100 rounded-lg w-full">
@@ -1055,6 +1097,8 @@ if (!case_id) {
           {previewData && previewUrl && (
             <button
               onClick={() => {
+                console.log("previewData:", previewData);
+                
                 const a = document.createElement("a");
 
                 const safeName = `${previewData?.name_cn || "obituary"}讣告`
